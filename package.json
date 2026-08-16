@@ -1,0 +1,27 @@
+{
+  "name": "watwashier",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^4.0.0",
+    "@sveltejs/kit": "^2.46.4",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@types/geojson": "^7946.0.16",
+    "svelte": "^5.43.6",
+    "svelte-check": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@allmaps/maplibre": "1.0.0-beta.42",
+    "maplibre-gl": "^5.8.0"
+  }
+}
