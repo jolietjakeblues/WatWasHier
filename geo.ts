@@ -1,0 +1,15 @@
+export function bboxAroundPoint(
+  lon: number,
+  lat: number,
+  radiusMeters: number
+): [number, number, number, number] {
+  const latDegrees = radiusMeters / 111_320;
+  const lonDegrees = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
+
+  return [
+    lon - lonDegrees,
+    lat - latDegrees,
+    lon + lonDegrees,
+    lat + latDegrees
+  ];
+}
