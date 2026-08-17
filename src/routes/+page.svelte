@@ -3,6 +3,7 @@
   import ContextPanel from '$lib/components/ContextPanel.svelte';
   import ContextHelp from '$lib/components/ContextHelp.svelte';
   import AppInfo from '$lib/components/AppInfo.svelte';
+  import ShareButton from '$lib/components/ShareButton.svelte';
   import type { LandscapeContext } from '$lib/domain';
   import { chooseHistoricalMap } from '$lib/historical';
   import { ALPHA_START_LOCATION } from '$lib/locations';
@@ -16,6 +17,17 @@
   let selectedBuildingId = $state<string | null>(null);
   let requestCounter = 0;
   let activeRequest: AbortController | null = null;
+  let requestedYear: number | null = null;
+  let requestedEdition: number | null = null;
+
+  function updateUrl(values: Record<string, string | null>) {
+    const url = new URL(window.location.href);
+    for (const [key, value] of Object.entries(values)) {
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    }
+    history.replaceState(history.state, '', url);
+  }
 
   function contextErrorMessage(status?: number): string {
     if (status === 400) return 'Deze locatie kon niet worden onderzocht. Kies een andere plek op de kaart.';
@@ -24,7 +36,17 @@
   }
 
   onMount(() => {
-    void selectLocation(ALPHA_START_LOCATION.lon, ALPHA_START_LOCATION.lat);
+    const params = new URLSearchParams(window.location.search);
+    const lon = Number(params.get('lon'));
+    const lat = Number(params.get('lat'));
+    const year = Number(params.get('year'));
+    const edition = Number(params.get('edition'));
+    requestedYear = Number.isFinite(year) && year > 0 ? year : null;
+    requestedEdition = Number.isFinite(edition) && edition > 0 ? edition : null;
+    void selectLocation(
+      Number.isFinite(lon) ? lon : ALPHA_START_LOCATION.lon,
+      Number.isFinite(lat) ? lat : ALPHA_START_LOCATION.lat
+    );
   });
 
   async function selectLocation(lon: number, lat: number) {
@@ -34,6 +56,7 @@
     activeRequest = new AbortController();
     loading = true;
     error = null;
+    updateUrl({ lon: lon.toFixed(6), lat: lat.toFixed(6) });
 
     try {
       const params = new URLSearchParams({
@@ -56,7 +79,10 @@
         const previousMap = context?.historical.maps.find(
           (historicalMap) => historicalMap.id === selectedHistoricalMapId
         );
-        const nextMap = chooseHistoricalMap(data.historical.maps, previousMap);
+        const requestedMap = data.historical.maps.find((map) =>
+          map.yearEnd === requestedYear && (requestedEdition === null || map.edition === requestedEdition)
+        );
+        const nextMap = requestedMap ?? chooseHistoricalMap(data.historical.maps, previousMap);
 
         context = data;
         selectedHistoricalMapId = nextMap?.id ?? null;
@@ -75,6 +101,13 @@
       }
     }
   }
+
+  $effect(() => {
+    if (!context || !selectedHistoricalMapId) return;
+    const map = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
+    if (!map) return;
+    updateUrl({ year: String(map.yearEnd), edition: String(map.edition) });
+  });
 </script>
 
 <svelte:head>
@@ -113,6 +146,7 @@
 
 <ContextHelp />
 <AppInfo {context} />
+<ShareButton />
 
 <style>
   main {

@@ -31,6 +31,7 @@
   let showHistorical = $state(true);
   let layerPanelOpen = $state(false);
   let background = $state<'osm' | 'aerial' | 'none'>('osm');
+  let urlReady = false;
   let popupRequest = 0;
 
   function syncLayerVisibility() {
@@ -43,6 +44,25 @@
     if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
     if (map.getLayer('osm')) map.setLayoutProperty('osm', 'visibility', background === 'osm' ? 'visible' : 'none');
     if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
+  }
+
+  function paramEnabled(params: URLSearchParams, name: string, fallback = true): boolean {
+    const value = params.get(name);
+    return value === null ? fallback : value !== '0';
+  }
+
+  function updateMapUrl() {
+    if (!urlReady) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('background', background);
+    url.searchParams.set('history', showHistorical ? '1' : '0');
+    url.searchParams.set('bag', showBuildings ? '1' : '0');
+    url.searchParams.set('monuments', showHeritage ? '1' : '0');
+    url.searchParams.set('faces', showFaces ? '1' : '0');
+    url.searchParams.set('world', showWorldHeritage ? '1' : '0');
+    url.searchParams.set('archaeology', showArchaeology ? '1' : '0');
+    url.searchParams.set('opacity', historicalOpacity.toFixed(2));
+    history.replaceState(history.state, '', url);
   }
 
   function findSelectedBuilding(): BuildingFeature | null {
@@ -92,18 +112,33 @@
     if (historicalLayer && rendererMapId) {
       historicalLayer.setMapOptions(rendererMapId, { opacity: historicalOpacity }, { duration: 0 });
     }
+    updateMapUrl();
   });
-  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showHistorical; background; syncLayerVisibility(); });
+  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
 
   onMount(() => {
     let disposed = false;
     void (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedBackground = params.get('background');
+      if (requestedBackground === 'osm' || requestedBackground === 'aerial' || requestedBackground === 'none') background = requestedBackground;
+      showHistorical = paramEnabled(params, 'history');
+      showBuildings = paramEnabled(params, 'bag');
+      showHeritage = paramEnabled(params, 'monuments');
+      showFaces = paramEnabled(params, 'faces');
+      showWorldHeritage = paramEnabled(params, 'world');
+      showArchaeology = paramEnabled(params, 'archaeology');
+      const requestedOpacity = Number(params.get('opacity'));
+      if (Number.isFinite(requestedOpacity) && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
+      const requestedLon = Number(params.get('lon'));
+      const requestedLat = Number(params.get('lat'));
+      const requestedZoom = Number(params.get('zoom'));
       const [maplibregl, allmaps] = await Promise.all([import('maplibre-gl'), import('@allmaps/maplibre')]);
       if (disposed) return;
       map = new maplibregl.Map({
         container,
-        center: [ALPHA_START_LOCATION.lon, ALPHA_START_LOCATION.lat],
-        zoom: ALPHA_START_LOCATION.zoom,
+        center: [Number.isFinite(requestedLon) ? requestedLon : ALPHA_START_LOCATION.lon, Number.isFinite(requestedLat) ? requestedLat : ALPHA_START_LOCATION.lat],
+        zoom: Number.isFinite(requestedZoom) ? requestedZoom : ALPHA_START_LOCATION.zoom,
         style: {
           version: 8,
           sources: {
@@ -118,6 +153,15 @@
       });
       marker = new maplibregl.Marker({ color: '#111827' }).setLngLat([ALPHA_START_LOCATION.lon, ALPHA_START_LOCATION.lat]).addTo(map);
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+      map.on('moveend', () => {
+        if (!map) return;
+        const url = new URL(window.location.href);
+        const center = map.getCenter();
+        url.searchParams.set('lon', center.lng.toFixed(6));
+        url.searchParams.set('lat', center.lat.toFixed(6));
+        url.searchParams.set('zoom', map.getZoom().toFixed(2));
+        history.replaceState(history.state, '', url);
+      });
 
       map.on('load', () => {
         if (!map) return;
@@ -144,6 +188,8 @@
         syncData();
         syncHistoricalMap();
         syncLayerVisibility();
+        urlReady = true;
+        updateMapUrl();
       });
 
       map.on('click', (event) => {

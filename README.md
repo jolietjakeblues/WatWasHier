@@ -323,6 +323,21 @@ Publieke productie-URL:
 https://watwashier.pages.dev
 ```
 
+## Deelbare kaartweergave
+
+De app bewaart de gekozen kaarttoestand in de URL. De deelknop gebruikt daardoor een reproduceerbare link naar dezelfde weergave.
+
+| Parameter | Betekenis | Voorbeeld |
+| --- | --- | --- |
+| `lon`, `lat` | middelpunt van de kaart | `lon=6.067779&lat=52.498626` |
+| `zoom` | zoomniveau | `zoom=14.20` |
+| `year`, `edition` | gekozen historische kaart | `year=1966&edition=4` |
+| `background` | `osm`, `aerial` of `none` | `background=aerial` |
+| `opacity` | doorzichtigheid historische kaart | `opacity=0.72` |
+| `history`, `bag`, `monuments`, `faces`, `world`, `archaeology` | zichtbaarheid per kaartlaag, `1` of `0` | `archaeology=1` |
+
+De browser gebruikt waar beschikbaar het systeemeigen deelvenster. Anders kopieert de app de URL naar het klembord.
+
 Voor een inhoudelijke pilot is een gebied van ongeveer 5 × 5 km genoeg om de keten te bewijzen:
 
 ```text
