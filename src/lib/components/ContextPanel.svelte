@@ -1,14 +1,20 @@
 <script lang="ts">
-  import type { LandscapeContext, AssertionType } from '$lib/domain';
+  import type { BuildingFeature, LandscapeContext, AssertionType } from '$lib/domain';
 
   let {
     context,
     loading,
-    error
+    error,
+    selectedBuilding,
+    selectedHistoricalMapId = $bindable(),
+    historicalOpacity = $bindable()
   }: {
     context: LandscapeContext | null;
     loading: boolean;
     error: string | null;
+    selectedBuilding: BuildingFeature | null;
+    selectedHistoricalMapId: string | null;
+    historicalOpacity: number;
   } = $props();
 
   const labels: Record<AssertionType, string> = {
@@ -16,6 +22,28 @@
     observation: 'Observatie',
     hypothesis: 'Hypothese'
   };
+
+  const ignoredBuildingProperties = new Set([
+    'identificatie',
+    'rdf_seealso',
+    'verblijfsobject.href'
+  ]);
+
+  let timelineMaps = $derived(
+    context ? [...context.historical.maps].sort((a, b) => a.yearEnd - b.yearEnd || a.edition - b.edition) : []
+  );
+  let selectedTimelineIndex = $derived(
+    Math.max(0, timelineMaps.findIndex((map) => map.id === selectedHistoricalMapId))
+  );
+
+  function propertyLabel(name: string): string {
+    return name.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
+  }
+
+  function propertyValue(value: unknown): string {
+    if (value === null || value === undefined || value === '') return 'Onbekend';
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  }
 </script>
 
 <aside class="panel">
@@ -23,16 +51,34 @@
     <p class="eyebrow">Landschapsgeheugen</p>
     <h1>Wat was hier?</h1>
     <p class="intro">
-      Selecteer een plek. We combineren actuele geodata, historische kaarten en later
-      erfgoedkennis, met provenance per uitspraak.
+      Selecteer een plek en ontdek hoe het landschap zich ontwikkelde. We verbinden actuele
+      geodata, historische kaarten, erfgoed en archeologische informatie. Bij ieder resultaat
+      zie je waar de informatie vandaan komt.
     </p>
   </header>
 
   {#if loading}
-    <div class="status">Bronnen worden bevraagd…</div>
-  {:else if error}
+    <div class="status">Nieuwe locatie wordt onderzocht. De resultaten worden bijgewerkt…</div>
+  {/if}
+
+  {#if error}
     <div class="error">{error}</div>
   {:else if context}
+    {#if selectedBuilding}
+      <section class="selected-building" aria-live="polite">
+        <p class="eyebrow">Geselecteerd gebouw</p>
+        <h2>Pand {String(selectedBuilding.properties?.identificatie ?? selectedBuilding.id ?? 'zonder ID')}</h2>
+        <dl class="building-data">
+          {#each Object.entries(selectedBuilding.properties ?? {}).filter(([name]) => !ignoredBuildingProperties.has(name)) as [name, value]}
+            <div><dt>{propertyLabel(name)}</dt><dd>{propertyValue(value)}</dd></div>
+          {/each}
+        </dl>
+        {#if selectedBuilding.properties?.rdf_seealso}
+          <a class="data-link" href={String(selectedBuilding.properties.rdf_seealso)} target="_blank" rel="noreferrer">Open BAG-resource</a>
+        {/if}
+      </section>
+    {/if}
+
     <section>
       <h2>Locatie</h2>
       <dl class="coords">
@@ -40,6 +86,101 @@
         <div><dt>Breedtegraad</dt><dd>{context.location.lat.toFixed(6)}</dd></div>
         <div><dt>Zoekstraal</dt><dd>{context.location.radiusMeters} m</dd></div>
       </dl>
+    </section>
+
+    <section>
+      <h2>Actuele PDOK-data</h2>
+      <p class="data-summary">
+        <strong>{context.current.buildings.features.length}</strong> BAG-panden opgehaald.
+        De groene contouren staan op de kaart.
+      </p>
+      {#if context.current.buildings.features.length}
+        <p class="muted">Hieronder staan de eerste 10 panden uit het geselecteerde gebied.</p>
+        <div class="buildings">
+          {#each context.current.buildings.features.slice(0, 10) as building}
+            <details>
+              <summary>
+                Pand {String(building.properties?.identificatie ?? building.id ?? 'zonder ID')}
+              </summary>
+              <dl class="building-data">
+                <div>
+                  <dt>Bouwjaar</dt>
+                  <dd>{String(building.properties?.bouwjaar ?? 'Onbekend')}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{String(building.properties?.status ?? 'Onbekend')}</dd>
+                </div>
+                <div>
+                  <dt>Gebruiksdoel</dt>
+                  <dd>{String(building.properties?.gebruiksdoel ?? 'Onbekend')}</dd>
+                </div>
+                <div>
+                  <dt>Verblijfsobjecten</dt>
+                  <dd>{String(building.properties?.aantal_verblijfsobjecten ?? 'Onbekend')}</dd>
+                </div>
+              </dl>
+              {#if building.properties?.rdf_seealso}
+                <a
+                  class="data-link"
+                  href={String(building.properties.rdf_seealso)}
+                  target="_blank"
+                  rel="noreferrer">Open BAG-resource</a
+                >
+              {/if}
+            </details>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <section>
+      <h2>Historische kaart</h2>
+      {#if context.historical.maps.length}
+        <div class="timeline" aria-label="Tijdlijn met beschikbare historische kaarten">
+          <div class="timeline-years">
+          {#each timelineMaps as historicalMap}
+            <button
+              class:active={historicalMap.id === selectedHistoricalMapId}
+              onclick={() => (selectedHistoricalMapId = historicalMap.id)}
+              title={`${historicalMap.label}, editie ${historicalMap.edition}`}
+            ><span>{historicalMap.yearEnd}</span><i></i></button>
+          {/each}
+          </div>
+          <input
+            aria-label="Historisch jaar"
+            type="range"
+            min="0"
+            max={Math.max(0, timelineMaps.length - 1)}
+            step="1"
+            value={selectedTimelineIndex}
+            oninput={(event) => {
+              selectedHistoricalMapId = timelineMaps[Number(event.currentTarget.value)]?.id ?? null;
+            }}
+          />
+        </div>
+        {#each context.historical.maps.filter((map) => map.id === selectedHistoricalMapId) as selectedMap}
+          <p class="selected-map">
+            Je bekijkt <strong>{selectedMap.label}</strong> uit {selectedMap.yearEnd}, editie
+            {selectedMap.edition}.
+          </p>
+        {/each}
+        <label class="opacity-control">
+          <span>Doorzichtigheid: {Math.round(historicalOpacity * 100)}%</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={historicalOpacity}
+            oninput={(event) => {
+              historicalOpacity = Number(event.currentTarget.value);
+            }}
+          />
+        </label>
+      {:else}
+        <p class="muted">Voor deze locatie is geen Waterstaatskaart gevonden.</p>
+      {/if}
     </section>
 
     <section>
@@ -54,10 +195,41 @@
 
     <section>
       <h2>Erfgoed</h2>
-      <p class="muted">
-        RCE-MCP is bewust nog niet rechtstreeks vanuit de browser gekoppeld. De volgende
-        stap is een server-side adapter die dezelfde contextstructuur vult.
-      </p>
+      {#if context.heritage.status === 'connected'}
+        <p><strong>{context.heritage.objects.features.length}</strong> beschermde RCE-objecten gevonden.</p>
+        <ul class="heritage-counts">
+          <li>Rijksmonumenten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'monument').length}</li>
+          <li>Gezichten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'face').length}</li>
+          <li>Werelderfgoed: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'world-heritage').length}</li>
+        </ul>
+        {#each context.heritage.objects.features.slice(0, 10) as object}
+          <article>
+            <span class="badge">RCE</span>
+            <p>{String(object.properties?.text || object.properties?.namespace || 'Beschermd erfgoedobject')}</p>
+            {#if object.properties?.ci_citation}
+              <a class="data-link" href={String(object.properties.ci_citation)} target="_blank" rel="noreferrer">Open monumentregister</a>
+            {/if}
+          </article>
+        {/each}
+      {:else}
+        <p class="muted">RCE kon voor deze locatie niet worden bereikt.</p>
+      {/if}
+    </section>
+
+    <section>
+      <h2>Archeologie</h2>
+      {#if context.archaeology.status === 'connected'}
+        <p><strong>{context.archaeology.objects.features.length}</strong> ruimtelijke ankers voor archeologische informatie gevonden.</p>
+        <ul class="heritage-counts">
+          <li>Terreinen: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischTerrein').length}</li>
+          <li>Onderzoeksgebieden: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischOnderzoeksgebied').length}</li>
+          <li>Vondstlocaties: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'Vondstlocatie').length}</li>
+        </ul>
+        <p>Direct gekoppelde records zonder eigen kaartgeometrie: <strong>{context.archaeology.objects.features.reduce((total, item) => total + Number(item.properties?.linkedObjectCount ?? 0), 0)}</strong>.</p>
+        <p class="muted">Niet alle archeologie heeft geometrie. De kaart toont alleen ruimtelijke ankers. Complexen, vondsten en grondsporen blijven via RCE-relaties aan die ankers gekoppeld.</p>
+      {:else}
+        <p class="muted">De archeologiebron reageerde niet binnen de tijdslimiet.</p>
+      {/if}
     </section>
 
     <section>
@@ -150,5 +322,38 @@
   .sources strong, .sources a { display: block; }
   .sources a { margin-top: 3px; color: #0b6f60; }
   .muted { color: #69736f; line-height: 1.5; }
+  .data-summary { margin: 0; line-height: 1.5; }
+  .buildings { display: grid; gap: 8px; margin-top: 12px; }
+  .buildings details {
+    padding: 10px 12px;
+    border: 1px solid #dce3df;
+    border-radius: 9px;
+    background: #f8faf8;
+  }
+  .buildings summary { cursor: pointer; font-weight: 650; overflow-wrap: anywhere; }
+  .building-data { display: grid; gap: 6px; margin: 12px 0; }
+  .building-data div { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
+  .building-data dd { overflow-wrap: anywhere; }
+  .data-link { color: #0b6f60; }
+  .timeline { position: relative; padding: 8px 4px 2px; }
+  .timeline-years { position: relative; display: flex; justify-content: space-between; align-items: end; }
+  .timeline-years::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 2px; background: #c9d2ce; }
+  .timeline-years button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-width: 34px; padding: 0; border: 0; background: transparent; color: #61706a; font: inherit; cursor: pointer; }
+  .timeline-years button span { font-size: 11px; }
+  .timeline-years button i { width: 11px; height: 11px; border: 2px solid #8da099; border-radius: 50%; background: #fff; }
+  .timeline-years button.active { color: #0b6f60; font-weight: 800; }
+  .timeline-years button.active i { width: 15px; height: 15px; border-color: #117865; background: #117865; }
+  .timeline > input { width: 100%; margin-top: 10px; accent-color: #117865; }
+  .opacity-control { display: grid; gap: 8px; margin-top: 16px; color: #53615c; }
+  .selected-map { margin: 14px 0 0; line-height: 1.45; color: #364b44; }
+  .opacity-control input { width: 100%; accent-color: #117865; }
   .warning { padding: 10px 12px; border-radius: 8px; }
+  .heritage-counts { padding-left: 20px; color: #53615c; }
+  .selected-building {
+    padding: 16px;
+    border: 2px solid #117865;
+    border-radius: 10px;
+    background: #f0f8f5;
+  }
+  .selected-building h2 { overflow-wrap: anywhere; }
 </style>

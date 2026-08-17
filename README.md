@@ -19,7 +19,7 @@ De uiteindelijke toepassing combineert onder meer:
 - thesauri en SKOS voor semantische interpretatie;
 - een taalmodel voor synthese, waarbij bronnen en afleidingen expliciet van elkaar gescheiden blijven.
 
-## Status: prototype 0.1
+## Status: alfa 0.3
 
 Deze eerste versie bewijst de basisarchitectuur.
 
@@ -27,12 +27,17 @@ Na een klik op de kaart:
 
 1. wordt een BBOX rond de gekozen locatie berekend;
 2. haalt de server BAG-panden op via de PDOK OGC API Features;
-3. controleert de server de Watertijdreis IIIF Collection;
+3. zoekt de server welke gegeorefereerde Watertijdreis-kaarten het klikpunt afdekken;
 4. worden resultaten genormaliseerd naar één `LandscapeContext`;
 5. worden BAG-panden als GeoJSON op de kaart getoond;
-6. krijgt elke uitspraak provenance.
+6. toont de kaart beschikbare jaren, een historische Allmaps-overlay en een transparantieregelaar;
+7. haalt de server beschermde RCE-objecten en CHO-semantiek op;
+8. onderscheidt de app Rijksmonumenten, Gezichten en Werelderfgoed;
+9. toont de app archeologische terreinen, onderzoeksgebieden en vondstlocaties als ruimtelijke ankers;
+10. haalt een detail-API gekoppelde complexen, vondsten en grondsporen op, ook zonder geometrie;
+11. krijgt elke uitspraak provenance, inclusief manifest- en resource-URI's.
 
-RCE-MCP, NL-MCP en Kadaster-MCP staan bewust nog achter een adaptergrens. MCP-calls horen niet rechtstreeks vanuit browsercode uitgevoerd te worden.
+Externe bronvragen lopen uitsluitend via serveradapters. De browser voert geen MCP- of SPARQL-vragen rechtstreeks uit.
 
 ## Belangrijk ontwerpprincipe
 
@@ -73,8 +78,11 @@ Browser
   +--> Watertijdreis-adapter
   |      +--> IIIF Collection
   |
-  +--> RCE-adapter             [volgende stap]
-  |      +--> RCE-MCP / CHO
+  +--> RCE-adapter
+  |      +--> PDOK OGC API + RCE CHO
+  |
+  +--> Archeologie-adapter
+  |      +--> CHO SPARQL + relationele detail-API
   |
   +--> Kadaster-adapter        [volgende stap]
   |
@@ -145,7 +153,13 @@ IIIF Collection:
 https://tu-delft-heritage.github.io/watertijdreis-data/collection.json
 ```
 
-Watertijdreis gebruikt IIIF Manifests en Georeference Annotations. In 0.1 controleren we de collectie en nemen we de bron op in provenance. De volgende stap is het bepalen en renderen van de historische kaartbladen die de geselecteerde locatie afdekken.
+Watertijdreis gebruikt IIIF Manifests en Georeference Annotations. De server leest de gepubliceerde georeferentie-index, toetst het klikpunt aan de kaartpolygonen en sorteert de treffers op jaar. De browser rendert alleen de gekozen kaart met `@allmaps/maplibre`.
+
+Kaartindex:
+
+```text
+https://watertijdreis.nl/maps-sorted-by-edition.json
+```
 
 De oorspronkelijke Watertijdreis-app gebruikt SvelteKit, MapLibre en de Allmaps MapLibre-plugin. Daarom gebruikt WatWasHier dezelfde technische familie.
 
@@ -174,6 +188,7 @@ Controleren:
 ```bash
 npm run check
 npm run build
+npm run test
 ```
 
 ## Configuratie
@@ -224,22 +239,28 @@ src/
 
 ### 0.2 Historische kaart
 
-- [ ] bepalen welke Watertijdreis-manifests de gekozen locatie afdekken
-- [ ] georeference annotations uitlezen
-- [ ] historische kaart via `@allmaps/maplibre` renderen
-- [ ] tijdselectie toevoegen
-- [ ] transparantie/schuifvergelijking oud versus nieuw
+- [x] bepalen welke Watertijdreis-manifests de gekozen locatie afdekken
+- [x] georeference annotations uitlezen
+- [x] historische kaart via `@allmaps/maplibre` renderen
+- [x] tijdselectie toevoegen
+- [x] transparantie oud versus nieuw
+- [ ] schuifvergelijking oud versus nieuw
 
-### 0.3 Erfgoed
+### 0.3 Erfgoed en archeologie
 
-- [ ] server-side RCE-adapter
-- [ ] CHO-objecten binnen geselecteerd gebied
-- [ ] monumenten
-- [ ] beschermde gezichten
+- [x] server-side RCE-adapter
+- [x] CHO-objecten binnen geselecteerd gebied
+- [x] monumenten
+- [x] beschermde gezichten
+- [x] Werelderfgoed
+- [x] archeologische ruimtelijke ankers
+- [x] gekoppelde records per type
+- [x] deduplicatie op relatierichting en CHO-URI
+- [x] archeologische detail-API
 - [ ] buitenplaatsen
 - [ ] groenaanleg
 - [ ] linies
-- [ ] provenance naar resource-URI's
+- [x] provenance naar resource-URI's
 
 ### 0.4 Semantiek
 
@@ -268,7 +289,11 @@ src/
 
 ## Eerste pilot
 
-De standaard kaart opent rond Zwolle. Dit is alleen een startpunt. De architectuur is niet aan één gebied gebonden.
+De alfa opent tijdelijk bij het Engelse Werk in Zwolle. Een latere publieke versie vraagt na toestemming de locatie van de gebruiker. De architectuur is niet aan één gebied gebonden.
+
+## Hosting
+
+Deze app is niet volledig statisch. `/api/context`, `/api/heritage` en `/api/archaeology/details` voeren server-side bronvragen uit. GitHub Pages kan alleen de statische frontend hosten en zou daarom een aparte API nodig hebben. Cloudflare Pages met Functions of een Cloudflare Worker past beter bij de huidige architectuur. De definitieve deployment volgt na stabilisatie van de alfa.
 
 Voor een inhoudelijke pilot is een gebied van ongeveer 5 × 5 km genoeg om de keten te bewijzen:
 
