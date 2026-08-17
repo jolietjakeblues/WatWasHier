@@ -6,6 +6,14 @@ import { getArchaeology } from './sources/archaeology';
 
 const now = () => new Date().toISOString();
 
+function sourceWarning(source: string, reason: unknown): string {
+  const detail = reason instanceof Error ? reason.message : String(reason);
+  const timeout = /abort|timeout|time.?limit/i.test(detail);
+  return timeout
+    ? `${source} reageerde niet op tijd. De overige bronnen zijn wel verwerkt.`
+    : `${source} is tijdelijk niet beschikbaar. De overige bronnen zijn wel verwerkt.`;
+}
+
 export async function buildLandscapeContext(
   location: LocationSelection
 ): Promise<LandscapeContext> {
@@ -24,7 +32,7 @@ export async function buildLandscapeContext(
       : { type: 'FeatureCollection' as const, features: [] };
 
   if (buildingsResult.status === 'rejected') {
-    warnings.push(`PDOK BAG: ${String(buildingsResult.reason)}`);
+    warnings.push(sourceWarning('PDOK BAG', buildingsResult.reason));
   }
 
   const historical =
@@ -38,15 +46,15 @@ export async function buildLandscapeContext(
         };
 
   if (historyResult.status === 'rejected') {
-    warnings.push(`Watertijdreis: ${String(historyResult.reason)}`);
+    warnings.push(sourceWarning('Watertijdreis', historyResult.reason));
   }
 
   const heritage = heritageResult.status === 'fulfilled'
     ? heritageResult.value
     : { type: 'FeatureCollection' as const, features: [] };
-  if (heritageResult.status === 'rejected') warnings.push(`RCE: ${String(heritageResult.reason)}`);
+  if (heritageResult.status === 'rejected') warnings.push(sourceWarning('RCE-erfgoed', heritageResult.reason));
   const archaeology = archaeologyResult.status === 'fulfilled' ? archaeologyResult.value : { type: 'FeatureCollection' as const, features: [] };
-  if (archaeologyResult.status === 'rejected') warnings.push(`RCE archeologie: ${String(archaeologyResult.reason)}`);
+  if (archaeologyResult.status === 'rejected') warnings.push(sourceWarning('RCE-archeologie', archaeologyResult.reason));
 
   const provenance: Provenance[] = [
     {

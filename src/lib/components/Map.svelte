@@ -267,4 +267,23 @@
   .map :global(.feature-card__groups), .map :global(.feature-card__relations) { margin: 6px 0 12px; padding-left: 20px; }
   .map :global(.feature-card__relations) { max-height: 170px; overflow: auto; }
   .map :global(.feature-card__relations small) { display: block; color: #69766f; }
+
+  @media (max-width: 900px) {
+    .map-shell { min-height: 420px; border-radius: 14px; }
+  }
+
+  @media (max-width: 520px) {
+    .map-shell { min-height: 360px; border-radius: 12px; }
+    .hint { left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 0.78rem; }
+    .layer-control {
+      left: 10px;
+      bottom: 10px;
+      max-height: 45%;
+      padding: 9px 10px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .map :global(.maplibregl-popup-content) { max-width: calc(100vw - 28px); }
+    .map :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); padding: 15px; }
+  }
 </style>

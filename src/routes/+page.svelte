@@ -15,6 +15,12 @@
   let requestCounter = 0;
   let activeRequest: AbortController | null = null;
 
+  function contextErrorMessage(status?: number): string {
+    if (status === 400) return 'Deze locatie kon niet worden onderzocht. Kies een andere plek op de kaart.';
+    if (status && status >= 500) return 'De gegevensservice is tijdelijk niet beschikbaar. Probeer het zo opnieuw.';
+    return 'De gegevens konden niet worden opgehaald. Controleer je verbinding en probeer het opnieuw.';
+  }
+
   onMount(() => {
     void selectLocation(ALPHA_START_LOCATION.lon, ALPHA_START_LOCATION.lat);
   });
@@ -39,8 +45,7 @@
       });
 
       if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${response.status}`);
+        throw new Error(contextErrorMessage(response.status));
       }
 
       const data = (await response.json()) as LandscapeContext;
@@ -57,7 +62,9 @@
     } catch (cause) {
       if (requestId === requestCounter) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return;
-        error = cause instanceof Error ? cause.message : String(cause);
+        error = cause instanceof Error && cause.message
+          ? cause.message
+          : contextErrorMessage();
       }
     } finally {
       if (requestId === requestCounter) {
@@ -116,7 +123,20 @@
   .panel-column { overflow: hidden; }
 
   @media (max-width: 900px) {
-    main { height: auto; min-height: 100dvh; grid-template-columns: 1fr; overflow: visible; }
-    .map-column { min-height: 58vh; }
+    main {
+      height: auto;
+      min-height: 100dvh;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 12px;
+      overflow: visible;
+    }
+    .map-column { height: min(62dvh, 620px); min-height: 420px; }
+    .panel-column { overflow: visible; }
+  }
+
+  @media (max-width: 520px) {
+    main { gap: 8px; padding: 8px; }
+    .map-column { height: 54dvh; min-height: 360px; }
   }
 </style>

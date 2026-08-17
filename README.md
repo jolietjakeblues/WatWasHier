@@ -2,6 +2,10 @@
 
 **WatWasHier** is een prototype voor een bevraagbaar landschapsgeheugen van Nederland.
 
+Publieke alfa: [https://watwashier.pages.dev](https://watwashier.pages.dev)
+
+> **ALFA 0.3:** dit is een publieke testversie. Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.
+
 Je klikt op een plek op de kaart en het systeem verzamelt context uit meerdere bronnen. Het doel is niet om alleen kaartlagen te stapelen, maar om brondata, tijd, geometrie en betekenis samen te brengen in controleerbare uitspraken.
 
 ## Idee
@@ -22,6 +26,8 @@ De uiteindelijke toepassing combineert onder meer:
 ## Status: alfa 0.3
 
 Deze eerste versie bewijst de basisarchitectuur.
+
+De alfa draait publiek op Cloudflare Pages. Iedere wijziging op de productiebranch `main` wordt automatisch gebouwd en gepubliceerd.
 
 Na een klik op de kaart:
 
@@ -310,6 +316,12 @@ npm run deploy:cloudflare
 ```
 
 Voor productie gebruiken we bij voorkeur Cloudflare Pages Git-integratie met de GitHub-repository. Instellingen: buildcommando `npm run build:cloudflare` en uitvoermap `.svelte-kit/cloudflare`.
+
+Publieke productie-URL:
+
+```text
+https://watwashier.pages.dev
+```
 
 Voor een inhoudelijke pilot is een gebied van ongeveer 5 × 5 km genoeg om de keten te bewijzen:
 

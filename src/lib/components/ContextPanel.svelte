@@ -48,13 +48,20 @@
 
 <aside class="panel">
   <header>
-    <p class="eyebrow">Landschapsgeheugen</p>
+    <div class="title-row">
+      <p class="eyebrow">Landschapsgeheugen</p>
+      <span class="alpha-label">ALFA 0.3</span>
+    </div>
     <h1>Wat was hier?</h1>
     <p class="intro">
       Selecteer een plek en ontdek hoe het landschap zich ontwikkelde. We verbinden actuele
       geodata, historische kaarten, erfgoed en archeologische informatie. Bij ieder resultaat
       zie je waar de informatie vandaan komt.
     </p>
+    <div class="test-notice" role="note">
+      <strong>Publieke testversie</strong>
+      <span>Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.</span>
+    </div>
   </header>
 
   {#if loading}
@@ -269,12 +276,23 @@
     border-radius: 16px;
   }
   .eyebrow {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.09em;
     text-transform: uppercase;
     color: #117865;
+  }
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .alpha-label {
+    flex: none;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #18332b;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
   }
   h1 {
     margin: 0;
@@ -284,6 +302,18 @@
   }
   h2 { margin: 0 0 12px; font-size: 1rem; }
   .intro { margin: 16px 0 0; color: #53615c; line-height: 1.55; }
+  .test-notice {
+    display: grid;
+    gap: 3px;
+    margin-top: 16px;
+    padding: 11px 13px;
+    border-left: 4px solid #d7b969;
+    border-radius: 8px;
+    background: #fff7dd;
+    color: #4f462c;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
   section {
     padding-top: 22px;
     margin-top: 22px;
@@ -356,4 +386,17 @@
     background: #f0f8f5;
   }
   .selected-building h2 { overflow-wrap: anywhere; }
+
+  @media (max-width: 900px) {
+    .panel { height: auto; overflow: visible; padding: 24px; }
+  }
+
+  @media (max-width: 520px) {
+    .panel { padding: 20px 16px; border-radius: 12px; }
+    h1 { font-size: 2.35rem; }
+    section { padding-top: 18px; margin-top: 18px; }
+    .building-data div { grid-template-columns: 105px minmax(0, 1fr); }
+    .timeline { margin-inline: -4px; overflow-x: auto; }
+    .timeline-years { min-width: 390px; }
+  }
 </style>
