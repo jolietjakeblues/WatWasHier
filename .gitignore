@@ -7,3 +7,4 @@ build
 .DS_Store
 .vite-dev.log
 .vite-dev-error.log
+.wrangler

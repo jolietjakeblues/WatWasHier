@@ -293,7 +293,23 @@ De alfa opent tijdelijk bij het Engelse Werk in Zwolle. Een latere publieke vers
 
 ## Hosting
 
-Deze app is niet volledig statisch. `/api/context`, `/api/heritage` en `/api/archaeology/details` voeren server-side bronvragen uit. GitHub Pages kan alleen de statische frontend hosten en zou daarom een aparte API nodig hebben. Cloudflare Pages met Functions of een Cloudflare Worker past beter bij de huidige architectuur. De definitieve deployment volgt na stabilisatie van de alfa.
+Deze app is niet volledig statisch. `/api/context`, `/api/heritage` en `/api/archaeology/details` voeren server-side bronvragen uit. Daarom gebruikt het project Cloudflare Pages met de officiële SvelteKit Cloudflare-adapter.
+
+Cloudflare-build lokaal controleren:
+
+```bash
+npm run build:cloudflare
+npm run preview:cloudflare
+```
+
+Handmatig publiceren naar het Pages-project `watwashier`:
+
+```bash
+npx wrangler login
+npm run deploy:cloudflare
+```
+
+Voor productie gebruiken we bij voorkeur Cloudflare Pages Git-integratie met de GitHub-repository. Instellingen: buildcommando `npm run build:cloudflare` en uitvoermap `.svelte-kit/cloudflare`.
 
 Voor een inhoudelijke pilot is een gebied van ongeveer 5 × 5 km genoeg om de keten te bewijzen:
 
