@@ -6,7 +6,7 @@
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
   import { ALPHA_START_LOCATION } from '$lib/locations';
 
-  let { context, selectedBuildingId, selectedHistoricalMapId, historicalOpacity, onlocationselect, onbuildingselect }: {
+  let { context, selectedBuildingId, selectedHistoricalMapId, historicalOpacity = $bindable(), onlocationselect, onbuildingselect }: {
     context: LandscapeContext | null;
     selectedBuildingId: string | null;
     selectedHistoricalMapId: string | null;
@@ -29,6 +29,8 @@
   let showWorldHeritage = $state(true);
   let showArchaeology = $state(true);
   let showHistorical = $state(true);
+  let layerPanelOpen = $state(false);
+  let background = $state<'osm' | 'aerial' | 'none'>('osm');
   let popupRequest = 0;
 
   function syncLayerVisibility() {
@@ -39,6 +41,8 @@
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
     if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
+    if (map.getLayer('osm')) map.setLayoutProperty('osm', 'visibility', background === 'osm' ? 'visible' : 'none');
+    if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
   }
 
   function findSelectedBuilding(): BuildingFeature | null {
@@ -89,7 +93,7 @@
       historicalLayer.setMapOptions(rendererMapId, { opacity: historicalOpacity }, { duration: 0 });
     }
   });
-  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showHistorical; syncLayerVisibility(); });
+  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showHistorical; background; syncLayerVisibility(); });
 
   onMount(() => {
     let disposed = false;
@@ -102,8 +106,14 @@
         zoom: ALPHA_START_LOCATION.zoom,
         style: {
           version: 8,
-          sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
-          layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+          sources: {
+            osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' },
+            aerial: { type: 'raster', tiles: ['https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg'], tileSize: 256, attribution: 'Luchtfoto: PDOK' }
+          },
+          layers: [
+            { id: 'osm', type: 'raster', source: 'osm' },
+            { id: 'aerial', type: 'raster', source: 'aerial', layout: { visibility: 'none' } }
+          ]
         }
       });
       marker = new maplibregl.Marker({ color: '#111827' }).setLngLat([ALPHA_START_LOCATION.lon, ALPHA_START_LOCATION.lat]).addTo(map);
@@ -224,23 +234,55 @@
 <div class="map-shell">
   <div class="map" bind:this={container}></div>
   <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een groen pand voor details.</div>
-  <div class="layer-control" aria-label="Kaartlagen">
-    <strong>Kaartlagen</strong>
-    <label><input type="checkbox" bind:checked={showHistorical} /><span class="swatch swatch--history"></span>Historische kaart</label>
-    <label><input type="checkbox" bind:checked={showBuildings} /><span class="swatch swatch--bag"></span>BAG-panden</label>
-    <label><input type="checkbox" bind:checked={showHeritage} /><span class="swatch swatch--rce"></span>Rijksmonumenten</label>
-    <label><input type="checkbox" bind:checked={showFaces} /><span class="swatch swatch--faces"></span>Gezichten</label>
-    <label><input type="checkbox" bind:checked={showWorldHeritage} /><span class="swatch swatch--world"></span>Werelderfgoed</label>
-    <label><input type="checkbox" bind:checked={showArchaeology} /><span class="swatch swatch--archaeology"></span>Archeologie</label>
-  </div>
+  <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
+    <span aria-hidden="true">◇</span> Lagen
+  </button>
+  {#if layerPanelOpen}
+    <div class="layer-control" aria-label="Kaartlagen">
+      <header><strong>Kaartlagen</strong><button type="button" aria-label="Sluit kaartlagen" onclick={() => layerPanelOpen = false}>×</button></header>
+      <fieldset>
+        <legend>Achtergrond</legend>
+        <label><input type="radio" name="background" value="osm" bind:group={background} />OpenStreetMap</label>
+        <label><input type="radio" name="background" value="aerial" bind:group={background} />Satellietbeeld</label>
+        <label><input type="radio" name="background" value="none" bind:group={background} />Geen achtergrond</label>
+      </fieldset>
+      <fieldset>
+        <legend>Historische kaart</legend>
+        <label><input type="checkbox" bind:checked={showHistorical} /><span class="swatch swatch--history"></span>Waterstaatskaart</label>
+        <label class="opacity-control">
+          <span>Doorzichtigheid: {Math.round(historicalOpacity * 100)}%</span>
+          <input type="range" min="0" max="1" step="0.05" bind:value={historicalOpacity} disabled={!showHistorical} />
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>Objecten</legend>
+        <label><input type="checkbox" bind:checked={showBuildings} /><span class="swatch swatch--bag"></span>BAG-panden</label>
+        <label><input type="checkbox" bind:checked={showHeritage} /><span class="swatch swatch--rce"></span>Rijksmonumenten</label>
+        <label><input type="checkbox" bind:checked={showFaces} /><span class="swatch swatch--faces"></span>Gezichten</label>
+        <label><input type="checkbox" bind:checked={showWorldHeritage} /><span class="swatch swatch--world"></span>Werelderfgoed</label>
+        <label><input type="checkbox" bind:checked={showArchaeology} /><span class="swatch swatch--archaeology"></span>Archeologie</label>
+      </fieldset>
+    </div>
+  {/if}
 </div>
 
 <style>
   .map-shell { position: relative; min-height: 580px; height: 100%; overflow: hidden; border-radius: 16px; background: #dde3df; }
   .map { position: absolute; inset: 0; }
   .hint { position: absolute; z-index: 2; left: 16px; top: 16px; max-width: min(430px, calc(100% - 32px)); padding: 9px 12px; border-radius: 9px; background: rgba(255, 255, 255, 0.94); box-shadow: 0 2px 14px rgba(20, 33, 29, 0.12); font-size: 0.88rem; pointer-events: none; }
-  .layer-control { position: absolute; z-index: 3; left: 16px; bottom: 16px; display: grid; gap: 7px; padding: 12px 14px; border-radius: 10px; background: rgba(255,255,255,.95); box-shadow: 0 4px 18px rgba(20,33,29,.16); font-size: 13px; }
+  .layer-button { position: absolute; z-index: 3; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 9px 13px; border: 1px solid #ccd5d1; border-radius: 10px; background: rgba(255,255,255,.96); color: #18332b; box-shadow: 0 4px 18px rgba(20,33,29,.16); font: inherit; font-weight: 750; cursor: pointer; }
+  .layer-button.active { background: #18332b; color: #fff; }
+  .layer-button span { font-size: 1.25rem; transform: rotate(45deg); }
+  .layer-control { position: absolute; z-index: 4; left: 16px; bottom: 68px; display: grid; gap: 14px; width: min(310px, calc(100% - 32px)); max-height: calc(100% - 110px); padding: 16px; overflow: auto; border-radius: 12px; background: rgba(255,255,255,.98); box-shadow: 0 8px 32px rgba(20,33,29,.22); font-size: 13px; }
+  .layer-control header { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; }
+  .layer-control header button { width: 30px; height: 30px; border: 0; background: transparent; color: #53615c; font-size: 1.5rem; cursor: pointer; }
+  .layer-control fieldset { display: grid; gap: 8px; margin: 0; padding: 0 0 13px; border: 0; border-bottom: 1px solid #e3e7e4; }
+  .layer-control fieldset:last-child { padding-bottom: 0; border-bottom: 0; }
+  .layer-control legend { margin-bottom: 8px; color: #53615c; font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
   .layer-control label { display: grid; grid-template-columns: 16px 12px 1fr; align-items: center; gap: 7px; cursor: pointer; }
+  .layer-control fieldset:first-of-type label { grid-template-columns: 16px 1fr; }
+  .layer-control .opacity-control { display: grid; grid-template-columns: 1fr; gap: 7px; margin: 5px 0 0 23px; color: #53615c; }
+  .opacity-control input { width: 100%; accent-color: #117865; }
   .swatch { width: 11px; height: 11px; border-radius: 3px; background: #aaa; }
   .swatch--history { background: #d7b969; }
   .swatch--bag { background: #117865; }
@@ -275,14 +317,8 @@
   @media (max-width: 520px) {
     .map-shell { min-height: 360px; border-radius: 12px; }
     .hint { left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 0.78rem; }
-    .layer-control {
-      left: 10px;
-      bottom: 10px;
-      max-height: 45%;
-      padding: 9px 10px;
-      overflow-y: auto;
-      font-size: 12px;
-    }
+    .layer-button { left: 10px; bottom: 10px; }
+    .layer-control { left: 10px; bottom: 62px; width: calc(100% - 20px); max-height: calc(100% - 112px); padding: 14px; font-size: 12px; }
     .map :global(.maplibregl-popup-content) { max-width: calc(100vw - 28px); }
     .map :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); padding: 15px; }
   }

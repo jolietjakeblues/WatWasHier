@@ -89,7 +89,7 @@
     <Map
       {context}
       {selectedHistoricalMapId}
-      {historicalOpacity}
+      bind:historicalOpacity
       {selectedBuildingId}
       onlocationselect={selectLocation}
       onbuildingselect={(buildingId) => (selectedBuildingId = buildingId)}
@@ -106,7 +106,6 @@
         return value !== undefined && value !== null && String(value) === selectedBuildingId;
       }) ?? null}
       bind:selectedHistoricalMapId
-      bind:historicalOpacity
     />
   </section>
 </main>

@@ -6,15 +6,13 @@
     loading,
     error,
     selectedBuilding,
-    selectedHistoricalMapId = $bindable(),
-    historicalOpacity = $bindable()
+    selectedHistoricalMapId = $bindable()
   }: {
     context: LandscapeContext | null;
     loading: boolean;
     error: string | null;
     selectedBuilding: BuildingFeature | null;
     selectedHistoricalMapId: string | null;
-    historicalOpacity: number;
   } = $props();
 
   const labels: Record<AssertionType, string> = {
@@ -172,19 +170,6 @@
             {selectedMap.edition}.
           </p>
         {/each}
-        <label class="opacity-control">
-          <span>Doorzichtigheid: {Math.round(historicalOpacity * 100)}%</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={historicalOpacity}
-            oninput={(event) => {
-              historicalOpacity = Number(event.currentTarget.value);
-            }}
-          />
-        </label>
       {:else}
         <p class="muted">Voor deze locatie is geen Waterstaatskaart gevonden.</p>
       {/if}
@@ -374,9 +359,7 @@
   .timeline-years button.active { color: #0b6f60; font-weight: 800; }
   .timeline-years button.active i { width: 15px; height: 15px; border-color: #117865; background: #117865; }
   .timeline > input { width: 100%; margin-top: 10px; accent-color: #117865; }
-  .opacity-control { display: grid; gap: 8px; margin-top: 16px; color: #53615c; }
   .selected-map { margin: 14px 0 0; line-height: 1.45; color: #364b44; }
-  .opacity-control input { width: 100%; accent-color: #117865; }
   .warning { padding: 10px 12px; border-radius: 8px; }
   .heritage-counts { padding-left: 20px; color: #53615c; }
   .selected-building {
