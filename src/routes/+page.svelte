@@ -2,6 +2,7 @@
   import Map from '$lib/components/Map.svelte';
   import ContextPanel from '$lib/components/ContextPanel.svelte';
   import ContextHelp from '$lib/components/ContextHelp.svelte';
+  import AppInfo from '$lib/components/AppInfo.svelte';
   import type { LandscapeContext } from '$lib/domain';
   import { chooseHistoricalMap } from '$lib/historical';
   import { ALPHA_START_LOCATION } from '$lib/locations';
@@ -111,6 +112,7 @@
 </main>
 
 <ContextHelp />
+<AppInfo {context} />
 
 <style>
   main {
