@@ -279,7 +279,7 @@
 
 <div class="map-shell">
   <div class="map" bind:this={container}></div>
-  <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een groen pand voor details.</div>
+  <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een pand voor details.</div>
   <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
     <span aria-hidden="true">◇</span> Lagen
   </button>
