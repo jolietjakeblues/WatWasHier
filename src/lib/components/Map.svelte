@@ -366,8 +366,9 @@
   .map :global(.feature-card__historical) { margin: 0 0 13px; padding: 10px; border-radius: 8px; background: #f4f0ff; }
   .map :global(.feature-card__historical ul) { margin: 5px 0 0; padding-left: 18px; }
   .map :global(.feature-card__historical small) { display: block; color: #69766f; }
-  .map :global(.feature-card__historical details) { margin-top: 8px; }
   .map :global(.feature-card__historical summary) { color: #6d28d9; font-weight: 700; cursor: pointer; }
+  .map :global(.feature-card__historical summary span) { display: block; margin-top: 2px; color: #69766f; font-size: 11px; font-weight: 500; }
+  .map :global(.feature-card__historical p) { margin: 9px 0 0; color: #52615b; font-size: 12px; line-height: 1.4; }
   .map :global(.feature-card h4) { margin: 12px 0 5px; }
   .map :global(.feature-card__groups), .map :global(.feature-card__relations) { margin: 6px 0 12px; padding-left: 20px; }
   .map :global(.feature-card__relations) { max-height: 170px; overflow: auto; }

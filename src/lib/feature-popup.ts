@@ -39,21 +39,28 @@ export function rcePopup(properties: GeoJsonProperties, details?: HeritageDetail
     : details
       ? '<p class="feature-card__image-status">Geen RCE-foto beschikbaar voor dit monument.</p>'
       : '';
-  const placePeriod = (name: HeritageDetails['historicalNames'][number]) => `<li><a href="${escapeHtml(name.uri)}" target="_blank" rel="noreferrer">${escapeHtml(name.label)}</a>${name.startYear || name.endYear ? `, ${name.startYear ?? "?"}–${name.endYear ?? "heden"}` : ""} <small>gekoppeld op woonplaatsnaam, ${Math.round(name.confidence * 100)}%</small></li>`;
-  const sortedNames = [...(details?.historicalNames ?? [])].sort((a, b) => {
-    if (a.endYear === null && b.endYear !== null) return -1;
-    if (a.endYear !== null && b.endYear === null) return 1;
-    return (b.startYear ?? -Infinity) - (a.startYear ?? -Infinity);
-  });
-  const visibleNames = sortedNames.slice(0, 4);
-  const remainingNames = sortedNames.slice(4);
-  const historicalNames = visibleNames.length
-    ? `<div class="feature-card__historical"><strong>ErfGeo-plaatsbeschrijvingen</strong><ul>${visibleNames.map(placePeriod).join('')}</ul>${remainingNames.length ? `<details><summary>Toon nog ${remainingNames.length} perioden</summary><ul>${remainingNames.map(placePeriod).join('')}</ul></details>` : ''}</div>`
-    : '';
-  const imageSource = image?.sourceUrl
+  const placeRecords = details?.historicalNames ?? [];
+  const placeLabel = placeRecords.find((name) => !name.label.toLowerCase().startsWith('gemeente '))?.label ?? placeRecords[0]?.label;
+  const sourceGroups = new Map<string, { url: string; count: number }>();
+  for (const record of placeRecords) {
+    if (!record.source) continue;
+    const key = record.source.split('/').pop() ?? record.source;
+    const group = sourceGroups.get(key);
+    if (group) group.count++;
+    else sourceGroups.set(key, { url: record.source, count: 1 });
+  }
+  const sourceLabels: Record<string, string> = {
+    atlasverstedelijking: 'Atlas van de verstedelijking',
+    gemeentegeschiedenis: 'Gemeentegeschiedenis',
+    poorterboeken: 'Poorterboeken',
+    plaatsen: 'Plaatsen'
+  };
+  const placeContext = placeLabel
+    ? `<details class="feature-card__historical"><summary>Plaatscontext: ${escapeHtml(placeLabel)} <span>${placeRecords.length} ErfGeo-records</span></summary><p>Automatisch gekoppeld op woonplaatsnaam, ${Math.round(Math.max(...placeRecords.map((name) => name.confidence)) * 100)}% zekerheid. Dit zijn plaatsrecords, geen gegevens over het monument zelf.</p><ul>${[...sourceGroups].map(([source, group]) => `<li><a href="${escapeHtml(group.url)}" target="_blank" rel="noreferrer">${escapeHtml(sourceLabels[source] ?? source)}</a>: ${group.count}</li>`).join('')}</ul></details>`
+    : '';  const imageSource = image?.sourceUrl
     ? `<a href="${escapeHtml(image.sourceUrl)}" target="_blank" rel="noreferrer">Open foto bij de RCE</a>`
     : '';
-  return `<div class="feature-card feature-card--rce"><span class="feature-card__type">${escapeHtml(category)}</span><h3>${escapeHtml(details?.originalFunction ?? title)}</h3>${imageHtml}${historicalNames}${details?.description ? `<p class="feature-card__description">${escapeHtml(details.description)}</p>` : ''}<dl>${row('RCE-identificatie', details?.monumentNumber ?? monumentNumber(url) ?? p.localid)}${row('Adres', details?.address)}${row('CHO-nummer', details?.choNumber)}${row('Functie', details?.originalFunction)}${row('Status', details?.legalStatus)}${row('Beschermd sinds', details?.registeredAt ?? p.legalfoundationdate)}${row('Foto’s', details?.images.length)}</dl>${loading ? '<p class="feature-card__loading">CHO-relaties worden geladen…</p>' : ''}${imageSource}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open monumentregister</a>` : ''}</div>`;
+  return `<div class="feature-card feature-card--rce"><span class="feature-card__type">${escapeHtml(category)}</span><h3>${escapeHtml(details?.originalFunction ?? title)}</h3>${imageHtml}${details?.description ? `<p class="feature-card__description">${escapeHtml(details.description)}</p>` : ''}<dl>${row('RCE-identificatie', details?.monumentNumber ?? monumentNumber(url) ?? p.localid)}${row('Adres', details?.address)}${row('CHO-nummer', details?.choNumber)}${row('Functie', details?.originalFunction)}${row('Status', details?.legalStatus)}${row('Beschermd sinds', details?.registeredAt ?? p.legalfoundationdate)}${row('Foto’s', details?.images.length)}</dl>${placeContext}${loading ? '<p class="feature-card__loading">CHO-relaties worden geladen…</p>' : ''}${imageSource}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open monumentregister</a>` : ''}</div>`;
 }
 
 export function monumentNumber(url: string | null): string | null {

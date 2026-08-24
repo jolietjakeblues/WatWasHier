@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { archaeologyPopup, bagPopup, escapeHtml, rcePopup } from './feature-popup';
 
+const emptyDetails = {
+  monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
+  bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
+  legalStatus: null, images: [], historicalNames: []
+};
+
 describe('feature popups', () => {
   it('escapet bronwaarden voordat ze als HTML worden getoond', () => {
     expect(escapeHtml('<script>')).toBe('&lt;script&gt;');
@@ -14,42 +20,37 @@ describe('feature popups', () => {
     expect(rcePopup({ ci_citation: 'https://example.test/monument' })).toContain('Open monumentregister');
   });
 
-  it('plaatst foto vóór ErfGeo en monumentvelden', () => {
+  it('plaatst foto en monumentvelden vóór de ErfGeo-plaatscontext', () => {
     const html = rcePopup({}, {
-      monumentNumber: '41894', choNumber: null, registeredAt: null, address: null,
-      bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
-      legalStatus: null,
+      ...emptyDetails,
       images: [{ uri: 'foto', title: null, description: null, thumbnailUrl: 'https://example.test/foto.jpg', sourceUrl: null, licenseUrl: null, graph: 'graph' }],
-      historicalNames: [{ uri: 'https://example.test/zwolle', label: 'Zwolle', source: null, startYear: 1812, endYear: 1967, matchMethod: 'place-label', confidence: 0.65 }]
+      historicalNames: [{ uri: 'https://example.test/zwolle', label: 'Zwolle', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1812, endYear: 1967, matchMethod: 'place-label', confidence: 0.65 }]
     });
 
-    expect(html.indexOf('feature-card__image')).toBeLessThan(html.indexOf('ErfGeo-plaatsbeschrijvingen'));
-    expect(html.indexOf('ErfGeo-plaatsbeschrijvingen')).toBeLessThan(html.indexOf('RCE-identificatie'));
+    expect(html.indexOf('feature-card__image')).toBeLessThan(html.indexOf('RCE-identificatie'));
+    expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('Plaatscontext: Zwolle'));
   });
+
   it('meldt duidelijk wanneer de RCE geen foto levert', () => {
-    const html = rcePopup({}, {
-      monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
-      bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
-      legalStatus: null, images: [], historicalNames: []
-    });
-
-    expect(html).toContain('Geen RCE-foto beschikbaar');
+    expect(rcePopup({}, emptyDetails)).toContain('Geen RCE-foto beschikbaar');
   });
 
-  it('klapt een lange lijst ErfGeo-perioden in', () => {
-    const periods = Array.from({ length: 6 }, (_, index) => ({
-      uri: 'https://example.test/' + index, label: 'Veere', source: null,
+  it('vat ErfGeo-records compact samen per bron', () => {
+    const records = Array.from({ length: 6 }, (_, index) => ({
+      uri: 'https://example.test/' + index, label: 'Veere',
+      source: index < 4 ? 'https://example.test/graph/gemeentegeschiedenis' : 'https://example.test/graph/plaatsen',
       startYear: 1800 + index, endYear: 1801 + index,
       matchMethod: 'place-label' as const, confidence: 0.65
     }));
-    const html = rcePopup({}, {
-      monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
-      bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
-      legalStatus: null, images: [], historicalNames: periods
-    });
+    const html = rcePopup({}, { ...emptyDetails, historicalNames: records });
 
-    expect(html).toContain('Toon nog 2 perioden');
+    expect(html).toContain('Plaatscontext: Veere');
+    expect(html).toContain('6 ErfGeo-records');
+    expect(html).toContain('Gemeentegeschiedenis</a>: 4');
+    expect(html).toContain('Plaatsen</a>: 2');
+    expect(html).not.toContain('1800');
   });
+
   it('groepeert archeologische details per type', () => {
     const html = archaeologyPopup({ archaeologyType: 'Vondstlocatie' }, { anchorUri: 'x', groups: [{ type: 'Vondsten', count: 2 }], relations: [] });
     expect(html).toContain('Vondsten: <strong>2</strong>');
