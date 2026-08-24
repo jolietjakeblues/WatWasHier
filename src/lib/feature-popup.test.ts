@@ -14,7 +14,7 @@ describe('feature popups', () => {
     expect(rcePopup({ ci_citation: 'https://example.test/monument' })).toContain('Open monumentregister');
   });
 
-  it('plaatst ErfGeo vóór foto en monumentvelden', () => {
+  it('plaatst foto vóór ErfGeo en monumentvelden', () => {
     const html = rcePopup({}, {
       monumentNumber: '41894', choNumber: null, registeredAt: null, address: null,
       bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
@@ -23,8 +23,32 @@ describe('feature popups', () => {
       historicalNames: [{ uri: 'https://example.test/zwolle', label: 'Zwolle', source: null, startYear: 1812, endYear: 1967, matchMethod: 'place-label', confidence: 0.65 }]
     });
 
-    expect(html.indexOf('ErfGeo-plaatsbeschrijvingen')).toBeLessThan(html.indexOf('feature-card__image'));
+    expect(html.indexOf('feature-card__image')).toBeLessThan(html.indexOf('ErfGeo-plaatsbeschrijvingen'));
     expect(html.indexOf('ErfGeo-plaatsbeschrijvingen')).toBeLessThan(html.indexOf('RCE-identificatie'));
+  });
+  it('meldt duidelijk wanneer de RCE geen foto levert', () => {
+    const html = rcePopup({}, {
+      monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
+      bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
+      legalStatus: null, images: [], historicalNames: []
+    });
+
+    expect(html).toContain('Geen RCE-foto beschikbaar');
+  });
+
+  it('klapt een lange lijst ErfGeo-perioden in', () => {
+    const periods = Array.from({ length: 6 }, (_, index) => ({
+      uri: 'https://example.test/' + index, label: 'Veere', source: null,
+      startYear: 1800 + index, endYear: 1801 + index,
+      matchMethod: 'place-label' as const, confidence: 0.65
+    }));
+    const html = rcePopup({}, {
+      monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
+      bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
+      legalStatus: null, images: [], historicalNames: periods
+    });
+
+    expect(html).toContain('Toon nog 2 perioden');
   });
   it('groepeert archeologische details per type', () => {
     const html = archaeologyPopup({ archaeologyType: 'Vondstlocatie' }, { anchorUri: 'x', groups: [{ type: 'Vondsten', count: 2 }], relations: [] });

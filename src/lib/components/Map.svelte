@@ -359,12 +359,15 @@
   .map :global(.feature-card a) { color: #0b6f60; font-weight: 700; }
   .map :global(.feature-card__loading) { margin: 0 0 12px; color: #6d28d9; font-size: 12px; }
   .map :global(.feature-card__description) { max-height: 130px; margin: 0 0 13px; overflow: auto; color: #40534c; line-height: 1.45; }
+  .map :global(.feature-card__image-status) { margin: 0 0 13px; padding: 9px 10px; border-radius: 8px; background: #f2f4f3; color: #5c6964; font-size: 12px; }
   .map :global(.feature-card__image) { margin: 0 0 13px; }
   .map :global(.feature-card__image img) { display: block; width: 100%; max-height: 190px; border-radius: 8px; object-fit: cover; background: #edf1ef; }
   .map :global(.feature-card__image figcaption) { margin-top: 6px; color: #69766f; font-size: 11px; line-height: 1.35; }
   .map :global(.feature-card__historical) { margin: 0 0 13px; padding: 10px; border-radius: 8px; background: #f4f0ff; }
   .map :global(.feature-card__historical ul) { margin: 5px 0 0; padding-left: 18px; }
   .map :global(.feature-card__historical small) { display: block; color: #69766f; }
+  .map :global(.feature-card__historical details) { margin-top: 8px; }
+  .map :global(.feature-card__historical summary) { color: #6d28d9; font-weight: 700; cursor: pointer; }
   .map :global(.feature-card h4) { margin: 12px 0 5px; }
   .map :global(.feature-card__groups), .map :global(.feature-card__relations) { margin: 6px 0 12px; padding-left: 20px; }
   .map :global(.feature-card__relations) { max-height: 170px; overflow: auto; }
