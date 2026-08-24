@@ -57,10 +57,14 @@ export function rcePopup(properties: GeoJsonProperties, details?: HeritageDetail
   };
   const placeContext = placeLabel
     ? `<details class="feature-card__historical"><summary>Plaatscontext: ${escapeHtml(placeLabel)} <span>${placeRecords.length} ErfGeo-records</span></summary><p>Automatisch gekoppeld op woonplaatsnaam, ${Math.round(Math.max(...placeRecords.map((name) => name.confidence)) * 100)}% zekerheid. Dit zijn plaatsrecords, geen gegevens over het monument zelf.</p><ul>${[...sourceGroups].map(([source, group]) => `<li><a href="${escapeHtml(group.url)}" target="_blank" rel="noreferrer">${escapeHtml(sourceLabels[source] ?? source)}</a>: ${group.count}</li>`).join('')}</ul></details>`
+    : '';  const description = details?.description?.trim() ?? '';
+  const descriptionExcerpt = description.length > 360 ? `${description.slice(0, 357).trimEnd()}…` : description;
+  const descriptionHtml = description
+    ? `<section class="feature-card__description"><h4>Beschrijving</h4><p>${escapeHtml(descriptionExcerpt)}</p>${description.length > 360 ? `<details><summary>Lees volledige beschrijving</summary><p>${escapeHtml(description)}</p></details>` : ''}</section>`
     : '';  const imageSource = image?.sourceUrl
     ? `<a href="${escapeHtml(image.sourceUrl)}" target="_blank" rel="noreferrer">Open foto bij de RCE</a>`
     : '';
-  return `<div class="feature-card feature-card--rce"><span class="feature-card__type">${escapeHtml(category)}</span><h3>${escapeHtml(details?.originalFunction ?? title)}</h3>${imageHtml}${details?.description ? `<p class="feature-card__description">${escapeHtml(details.description)}</p>` : ''}<dl>${row('RCE-identificatie', details?.monumentNumber ?? monumentNumber(url) ?? p.localid)}${row('Adres', details?.address)}${row('CHO-nummer', details?.choNumber)}${row('Functie', details?.originalFunction)}${row('Status', details?.legalStatus)}${row('Beschermd sinds', details?.registeredAt ?? p.legalfoundationdate)}${row('Foto’s', details?.images.length)}</dl>${placeContext}${loading ? '<p class="feature-card__loading">CHO-relaties worden geladen…</p>' : ''}${imageSource}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open monumentregister</a>` : ''}</div>`;
+  return `<div class="feature-card feature-card--rce"><span class="feature-card__type">${escapeHtml(category)}</span><h3>${escapeHtml(details?.originalFunction ?? title)}</h3>${imageHtml}<dl>${row('RCE-identificatie', details?.monumentNumber ?? monumentNumber(url) ?? p.localid)}${row('Adres', details?.address)}${row('CHO-nummer', details?.choNumber)}${row('Functie', details?.originalFunction)}${row('Status', details?.legalStatus)}${row('Beschermd sinds', details?.registeredAt ?? p.legalfoundationdate)}${row('Foto’s', details?.images.length)}</dl>${descriptionHtml}${placeContext}${loading ? '<p class="feature-card__loading">CHO-relaties worden geladen…</p>' : ''}${imageSource}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open monumentregister</a>` : ''}</div>`;
 }
 
 export function monumentNumber(url: string | null): string | null {

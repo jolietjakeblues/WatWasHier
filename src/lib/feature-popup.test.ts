@@ -31,6 +31,18 @@ describe('feature popups', () => {
     expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('Plaatscontext: Zwolle'));
   });
 
+  it('zet kerngegevens vóór een ingeklapte lange beschrijving en plaatscontext', () => {
+    const description = 'Lange registerbeschrijving. '.repeat(30);
+    const html = rcePopup({}, {
+      ...emptyDetails,
+      description,
+      historicalNames: [{ uri: 'https://example.test/geleen', label: 'Geleen', source: 'https://example.test/graph/plaatsen', startYear: null, endYear: null, matchMethod: 'place-label', confidence: 0.65 }]
+    });
+
+    expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('<h4>Beschrijving</h4>'));
+    expect(html).toContain('Lees volledige beschrijving');
+    expect(html.indexOf('<h4>Beschrijving</h4>')).toBeLessThan(html.indexOf('Plaatscontext: Geleen'));
+  });
   it('meldt duidelijk wanneer de RCE geen foto levert', () => {
     expect(rcePopup({}, emptyDetails)).toContain('Geen RCE-foto beschikbaar');
   });

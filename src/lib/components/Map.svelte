@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { BuildingFeature, LandscapeContext } from '$lib/domain';
   import { actionForMapClick, buildingIdFromFeature } from '$lib/map-interaction';
   import { archaeologyPopup, bagPopup, monumentNumber, rcePopup } from '$lib/feature-popup';
@@ -34,7 +34,14 @@
   let background = $state<'osm' | 'aerial' | 'none'>('osm');
   let urlReady = false;
   let popupRequest = 0;
+  let heritagePanelHtml = $state<string | null>(null);
+  let heritagePanel = $state<HTMLElement>();
 
+  async function showHeritagePanel(html: string) {
+    heritagePanelHtml = html;
+    await tick();
+    heritagePanel?.scrollTo({ top: 0 });
+  }
   function syncLayerVisibility() {
     if (!map || !map.isStyleLoaded()) return;
     for (const id of ['bag-buildings-fill', 'bag-buildings-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showBuildings ? 'visible' : 'none');
@@ -200,7 +207,8 @@
         const archaeologyHits = map.queryRenderedFeatures(event.point, { layers: ['archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
         const buildingHits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill'] });
 
-        if (archaeologyHits[0]) {
+        if (showArchaeology && archaeologyHits[0] && !heritageHits[0]) {
+          heritagePanelHtml = null;
           const requestId = ++popupRequest;
           const properties = archaeologyHits[0].properties;
           const resource = properties?.resource ? String(properties.resource) : null;
@@ -217,17 +225,15 @@
           return;
         }
 
-        if (heritageHits[0]) {
+        if ((showHeritage || showFaces || showWorldHeritage) && heritageHits[0]) {
           const requestId = ++popupRequest;
           const properties = heritageHits[0].properties;
           const registerUrl = properties?.ci_citation ? String(properties.ci_citation) : null;
           const number = monumentNumber(registerUrl);
           const choNumber = properties?.localid ? String(properties.localid).replace(/\.0+$/, '') : null;
           popup?.remove();
-          popup = new maplibregl.Popup({ closeButton: true, maxWidth: '340px', offset: 10 })
-            .setLngLat(event.lngLat)
-            .setHTML(rcePopup(properties, null, Boolean(number)))
-            .addTo(map);
+          popup = null;
+          void showHeritagePanel(rcePopup(properties, null, Boolean(number)));
           if (number) {
             const detailParams = new URLSearchParams({
               lon: String(event.lngLat.lng),
@@ -235,19 +241,19 @@
             });
             if (choNumber) detailParams.set('cho', choNumber);
             void fetch(`/api/heritage/${number}?${detailParams}`).then(async (response) => {
-            if (!response.ok) throw new Error('RCE-details niet beschikbaar');
-            return response.json() as Promise<HeritageDetails>;
-          }).then((details) => {
-            if (requestId === popupRequest) popup?.setHTML(rcePopup(properties, details));
-          }).catch(() => {
-            if (requestId === popupRequest) popup?.setHTML(rcePopup(properties));
-          });
+              if (!response.ok) throw new Error('RCE-details niet beschikbaar');
+              return response.json() as Promise<HeritageDetails>;
+            }).then((details) => {
+              if (requestId === popupRequest) void showHeritagePanel(rcePopup(properties, details));
+            }).catch(() => {
+              if (requestId === popupRequest) void showHeritagePanel(rcePopup(properties));
+            });
           }
           return;
         }
-
         const action = actionForMapClick(buildingHits, event.lngLat.lng, event.lngLat.lat);
         if (action.type === 'select-building') {
+          heritagePanelHtml = null;
           onbuildingselect(action.buildingId);
           popup?.remove();
           popup = new maplibregl.Popup({ closeButton: true, maxWidth: '340px', offset: 10 })
@@ -257,6 +263,7 @@
           return;
         }
         popup?.remove();
+        heritagePanelHtml = null;
         popupRequest++;
         map.setCenter([action.lon, action.lat]);
         marker?.setLngLat([action.lon, action.lat]);
@@ -291,8 +298,13 @@
   <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
     <span aria-hidden="true">◇</span> Lagen
   </button>
-  {#if layerPanelOpen}
-    <div class="layer-control" aria-label="Kaartlagen">
+  {#if heritagePanelHtml}
+    <aside class="heritage-panel" bind:this={heritagePanel} aria-label="Details van het geselecteerde monument" aria-live="polite">
+      <button class="heritage-panel__close" type="button" aria-label="Sluit monumentdetails" onclick={() => { heritagePanelHtml = null; popupRequest++; }}>×</button>
+      {@html heritagePanelHtml}
+    </aside>
+  {/if}
+  {#if layerPanelOpen}    <div class="layer-control" aria-label="Kaartlagen">
       <header><strong>Kaartlagen</strong><button type="button" aria-label="Sluit kaartlagen" onclick={() => layerPanelOpen = false}>×</button></header>
       <fieldset>
         <legend>Achtergrond</legend>
@@ -323,6 +335,9 @@
 <style>
   .map-shell { position: relative; min-height: 580px; height: 100%; overflow: hidden; border-radius: 16px; background: #dde3df; }
   .map { position: absolute; inset: 0; }
+  .heritage-panel { position: absolute; z-index: 5; top: 16px; right: 58px; width: min(390px, calc(100% - 90px)); max-height: calc(100% - 32px); overflow-y: auto; overscroll-behavior: contain; border-radius: 12px; background: #fff; box-shadow: 0 12px 38px rgba(10, 31, 24, 0.28); scrollbar-gutter: stable; }
+  .heritage-panel__close { position: sticky; z-index: 2; top: 8px; float: right; width: 32px; height: 32px; margin: 8px 8px -40px 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.94); color: #344b43; font: 700 22px/1 sans-serif; cursor: pointer; box-shadow: 0 1px 5px rgba(10,31,24,.16); }
+  .heritage-panel :global(.feature-card) { max-height: none; overflow: visible; }
   .hint { position: absolute; z-index: 2; left: 16px; top: 16px; max-width: min(430px, calc(100% - 32px)); padding: 9px 12px; border-radius: 9px; background: rgba(255, 255, 255, 0.94); box-shadow: 0 2px 14px rgba(20, 33, 29, 0.12); font-size: 0.88rem; pointer-events: none; }
   .layer-button { position: absolute; z-index: 3; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 9px 13px; border: 1px solid #ccd5d1; border-radius: 10px; background: rgba(255,255,255,.96); color: #18332b; box-shadow: 0 4px 18px rgba(20,33,29,.16); font: inherit; font-weight: 750; cursor: pointer; }
   .layer-button.active { background: #18332b; color: #fff; }
@@ -346,33 +361,38 @@
   .swatch--archaeology { background: #ca8a04; }
   .map :global(.maplibregl-popup-content) { max-height: min(620px, calc(100dvh - 96px)); padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
   .map :global(.maplibregl-popup-close-button) { z-index: 2; padding: 7px 10px; font-size: 20px; color: #344b43; }
-  .map :global(.feature-card) { min-width: 245px; max-height: min(615px, calc(100dvh - 101px)); padding: 18px; overflow-y: auto; overscroll-behavior: contain; border-top: 5px solid #117865; color: #18332b; scrollbar-gutter: stable; }
-  .map :global(.feature-card--rce) { border-top-color: #7c3aed; }
-  .map :global(.feature-card--archaeology) { border-top-color: #ca8a04; }
-  .map :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .map :global(.feature-card--rce .feature-card__type) { color: #6d28d9; }
-  .map :global(.feature-card h3) { margin: 5px 28px 12px 0; font-size: 17px; line-height: 1.25; }
-  .map :global(.feature-card dl) { display: grid; gap: 6px; margin: 0 0 13px; }
-  .map :global(.feature-card dl div) { display: grid; grid-template-columns: 105px 1fr; gap: 10px; }
-  .map :global(.feature-card dt) { color: #69766f; }
-  .map :global(.feature-card dd) { margin: 0; overflow-wrap: anywhere; }
-  .map :global(.feature-card a) { color: #0b6f60; font-weight: 700; }
-  .map :global(.feature-card__loading) { margin: 0 0 12px; color: #6d28d9; font-size: 12px; }
-  .map :global(.feature-card__description) { max-height: 130px; margin: 0 0 13px; overflow: auto; color: #40534c; line-height: 1.45; }
-  .map :global(.feature-card__image-status) { margin: 0 0 13px; padding: 9px 10px; border-radius: 8px; background: #f2f4f3; color: #5c6964; font-size: 12px; }
-  .map :global(.feature-card__image) { margin: 0 0 13px; }
-  .map :global(.feature-card__image img) { display: block; width: 100%; max-height: 190px; border-radius: 8px; object-fit: cover; background: #edf1ef; }
-  .map :global(.feature-card__image figcaption) { margin-top: 6px; color: #69766f; font-size: 11px; line-height: 1.35; }
-  .map :global(.feature-card__historical) { margin: 0 0 13px; padding: 10px; border-radius: 8px; background: #f4f0ff; }
-  .map :global(.feature-card__historical ul) { margin: 5px 0 0; padding-left: 18px; }
-  .map :global(.feature-card__historical small) { display: block; color: #69766f; }
-  .map :global(.feature-card__historical summary) { color: #6d28d9; font-weight: 700; cursor: pointer; }
-  .map :global(.feature-card__historical summary span) { display: block; margin-top: 2px; color: #69766f; font-size: 11px; font-weight: 500; }
-  .map :global(.feature-card__historical p) { margin: 9px 0 0; color: #52615b; font-size: 12px; line-height: 1.4; }
-  .map :global(.feature-card h4) { margin: 12px 0 5px; }
-  .map :global(.feature-card__groups), .map :global(.feature-card__relations) { margin: 6px 0 12px; padding-left: 20px; }
-  .map :global(.feature-card__relations) { max-height: 170px; overflow: auto; }
-  .map :global(.feature-card__relations small) { display: block; color: #69766f; }
+  .map-shell :global(.feature-card) { min-width: 245px; max-height: min(615px, calc(100dvh - 101px)); padding: 18px; overflow-y: auto; overscroll-behavior: contain; border-top: 5px solid #117865; color: #18332b; scrollbar-gutter: stable; }
+  .map-shell :global(.feature-card--rce) { border-top-color: #7c3aed; }
+  .map-shell :global(.feature-card--archaeology) { border-top-color: #ca8a04; }
+  .map-shell :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .map-shell :global(.feature-card--rce .feature-card__type) { color: #6d28d9; }
+  .map-shell :global(.feature-card h3) { margin: 5px 28px 12px 0; font-size: 17px; line-height: 1.25; }
+  .map-shell :global(.feature-card dl) { display: grid; gap: 6px; margin: 0 0 13px; }
+  .map-shell :global(.feature-card dl div) { display: grid; grid-template-columns: 105px 1fr; gap: 10px; }
+  .map-shell :global(.feature-card dt) { color: #69766f; }
+  .map-shell :global(.feature-card dd) { margin: 0; overflow-wrap: anywhere; }
+  .map-shell :global(.feature-card a) { color: #0b6f60; font-weight: 700; }
+  .map-shell :global(.feature-card__loading) { margin: 0 0 12px; color: #6d28d9; font-size: 12px; }
+  .map-shell :global(.feature-card__description) { margin: 0 0 13px; padding-top: 11px; border-top: 1px solid #e4e8e5; color: #40534c; line-height: 1.45; }
+  .map-shell :global(.feature-card__description h4) { margin: 0 0 6px; color: #18332b; font-size: 13px; }
+  .map-shell :global(.feature-card__description p) { margin: 0 0 8px; }
+  .map-shell :global(.feature-card__description details) { margin-top: 6px; }
+  .map-shell :global(.feature-card__description summary) { color: #0b6f60; font-weight: 700; cursor: pointer; }
+  .map-shell :global(.feature-card__description details p) { margin-top: 9px; white-space: pre-line; }
+  .map-shell :global(.feature-card__image-status) { margin: 0 0 13px; padding: 9px 10px; border-radius: 8px; background: #f2f4f3; color: #5c6964; font-size: 12px; }
+  .map-shell :global(.feature-card__image) { margin: 0 0 13px; }
+  .map-shell :global(.feature-card__image img) { display: block; width: 100%; max-height: 190px; border-radius: 8px; object-fit: cover; background: #edf1ef; }
+  .map-shell :global(.feature-card__image figcaption) { margin-top: 6px; color: #69766f; font-size: 11px; line-height: 1.35; }
+  .map-shell :global(.feature-card__historical) { margin: 0 0 13px; padding: 10px; border-radius: 8px; background: #f4f0ff; }
+  .map-shell :global(.feature-card__historical ul) { margin: 5px 0 0; padding-left: 18px; }
+  .map-shell :global(.feature-card__historical small) { display: block; color: #69766f; }
+  .map-shell :global(.feature-card__historical summary) { color: #6d28d9; font-weight: 700; cursor: pointer; }
+  .map-shell :global(.feature-card__historical summary span) { display: block; margin-top: 2px; color: #69766f; font-size: 11px; font-weight: 500; }
+  .map-shell :global(.feature-card__historical p) { margin: 9px 0 0; color: #52615b; font-size: 12px; line-height: 1.4; }
+  .map-shell :global(.feature-card h4) { margin: 12px 0 5px; }
+  .map-shell :global(.feature-card__groups), .map :global(.feature-card__relations) { margin: 6px 0 12px; padding-left: 20px; }
+  .map-shell :global(.feature-card__relations) { max-height: 170px; overflow: auto; }
+  .map-shell :global(.feature-card__relations small) { display: block; color: #69766f; }
 
   @media (max-width: 900px) {
     .map-shell { min-height: 420px; border-radius: 14px; }
@@ -380,10 +400,11 @@
 
   @media (max-width: 520px) {
     .map-shell { min-height: 360px; border-radius: 12px; }
+    .heritage-panel { top: auto; right: 10px; bottom: 10px; left: 10px; width: auto; max-height: min(68%, 520px); border-radius: 14px; }
     .hint { left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 0.78rem; }
     .layer-button { left: 10px; bottom: 10px; }
     .layer-control { left: 10px; bottom: 62px; width: calc(100% - 20px); max-height: calc(100% - 112px); padding: 14px; font-size: 12px; }
     .map :global(.maplibregl-popup-content) { max-width: calc(100vw - 28px); max-height: calc(54dvh - 40px); }
-    .map :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); max-height: calc(54dvh - 45px); padding: 15px; }
+    .map-shell :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); max-height: calc(54dvh - 45px); padding: 15px; }
   }
 </style>
