@@ -3,6 +3,7 @@ import { getBagBuildings } from './sources/pdok';
 import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
+import { bboxAroundPoint } from '$lib/geo';
 
 const now = () => new Date().toISOString();
 
@@ -22,7 +23,7 @@ export async function buildLandscapeContext(
   const [buildingsResult, historyResult, heritageResult, archaeologyResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
-    getRceHeritage(location.bbox),
+    getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
     getArchaeology(location.bbox)
   ]);
 
@@ -115,7 +116,7 @@ export async function buildLandscapeContext(
       {
         id: 'rce-object-count',
         type: 'source_fact',
-        statement: `RCE leverde ${heritage.features.length} beschermde erfgoedobjecten binnen het geselecteerde gebied.`,
+        statement: `RCE leverde ${heritage.features.length} beschermde erfgoedobjecten binnen ${location.heritageRadiusMeters} meter.`,
         sourceIds: ['source-rce']
       },
       {

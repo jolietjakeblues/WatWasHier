@@ -23,18 +23,31 @@ export async function getRceHeritage(
   bbox: [number, number, number, number]
 ): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
   const collections = await Promise.all(COLLECTIONS.map((name) => getCollection(name, bbox)));
+  const features = collections.flatMap((item) => item.features).map((feature) => ({
+    ...feature,
+    properties: {
+      ...(feature.properties ?? {}),
+      heritageType: heritageType(String(feature.properties?.namespace ?? ''))
+    }
+  }));
   return {
     type: 'FeatureCollection',
-    features: collections.flatMap((item) => item.features).map((feature) => ({
-      ...feature,
-      properties: {
-        ...(feature.properties ?? {}),
-        heritageType: heritageType(String(feature.properties?.namespace ?? ''))
-      }
-    }))
+    features: deduplicateHeritageFeatures(features)
   };
 }
 
+export function deduplicateHeritageFeatures(
+  features: FeatureCollection<Geometry, GeoJsonProperties>['features']
+): FeatureCollection<Geometry, GeoJsonProperties>['features'] {
+  const unique = new Map<string, (typeof features)[number]>();
+  for (const feature of features) {
+    const properties = feature.properties ?? {};
+    const citation = properties.ci_citation ? String(properties.ci_citation) : null;
+    const key = citation ?? `${properties.namespace ?? ''}|${properties.localid ?? feature.id ?? ''}`;
+    if (!unique.has(key)) unique.set(key, feature);
+  }
+  return [...unique.values()];
+}
 function heritageType(namespace: string): 'monument' | 'face' | 'world-heritage' | 'other' {
   if (namespace.includes('stadsendorpsgezichten')) return 'face';
   if (namespace.includes('werelderfgoed')) return 'world-heritage';

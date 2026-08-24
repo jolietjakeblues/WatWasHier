@@ -267,6 +267,11 @@ src/
 - [ ] groenaanleg
 - [ ] linies
 - [x] provenance naar resource-URI's
+- [ ] zichtbare zoekstraalslider voor plekcontext, 25–1000 meter
+- [ ] afzonderlijke zoekstraalslider voor rijksmonumenten, 100–2000 meter
+- [ ] zoekcirkels zichtbaar op de kaart tekenen
+- [ ] straalwaarden in de deelbare URL bewaren
+- [ ] nieuwe datavraag pas na loslaten van de slider uitvoeren
 
 ### 0.4 Foto's en ErfGeo
 

@@ -9,6 +9,10 @@ export async function GET({ url }) {
     Math.max(Number(url.searchParams.get('radius') ?? 250), 25),
     1000
   );
+  const heritageRadiusMeters = Math.min(
+    Math.max(Number(url.searchParams.get('heritageRadius') ?? radiusMeters * 2.4), 100),
+    2000
+  );
 
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
     return json({ error: 'lon en lat zijn verplicht' }, { status: 400 });
@@ -22,6 +26,7 @@ export async function GET({ url }) {
     lon,
     lat,
     radiusMeters,
+    heritageRadiusMeters,
     bbox: bboxAroundPoint(lon, lat, radiusMeters)
   };
 

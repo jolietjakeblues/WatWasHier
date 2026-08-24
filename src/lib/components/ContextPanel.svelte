@@ -89,7 +89,8 @@
       <dl class="coords">
         <div><dt>Lengtegraad</dt><dd>{context.location.lon.toFixed(6)}</dd></div>
         <div><dt>Breedtegraad</dt><dd>{context.location.lat.toFixed(6)}</dd></div>
-        <div><dt>Zoekstraal</dt><dd>{context.location.radiusMeters} m</dd></div>
+        <div><dt>Plekcontext</dt><dd>{context.location.radiusMeters} m</dd></div>
+        <div><dt>Rijksmonumenten</dt><dd>{context.location.heritageRadiusMeters} m</dd></div>
       </dl>
     </section>
 

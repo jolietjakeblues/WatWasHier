@@ -58,6 +58,7 @@ export interface LocationSelection {
   lon: number;
   lat: number;
   radiusMeters: number;
+  heritageRadiusMeters: number;
   bbox: [number, number, number, number];
 }
 
