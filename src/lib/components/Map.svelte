@@ -5,6 +5,7 @@
   import { archaeologyPopup, bagPopup, monumentNumber, rcePopup } from '$lib/feature-popup';
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
   import { ALPHA_START_LOCATION } from '$lib/locations';
+  import { optionalNumber } from '$lib/url-params';
 
   let { context, selectedBuildingId, selectedHistoricalMapId, historicalOpacity = $bindable(), onlocationselect, onbuildingselect }: {
     context: LandscapeContext | null;
@@ -128,17 +129,17 @@
       showFaces = paramEnabled(params, 'faces');
       showWorldHeritage = paramEnabled(params, 'world');
       showArchaeology = paramEnabled(params, 'archaeology');
-      const requestedOpacity = Number(params.get('opacity'));
-      if (Number.isFinite(requestedOpacity) && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
-      const requestedLon = Number(params.get('lon'));
-      const requestedLat = Number(params.get('lat'));
-      const requestedZoom = Number(params.get('zoom'));
+      const requestedOpacity = optionalNumber(params, 'opacity');
+      if (requestedOpacity !== null && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
+      const requestedLon = optionalNumber(params, 'lon');
+      const requestedLat = optionalNumber(params, 'lat');
+      const requestedZoom = optionalNumber(params, 'zoom');
       const [maplibregl, allmaps] = await Promise.all([import('maplibre-gl'), import('@allmaps/maplibre')]);
       if (disposed) return;
       map = new maplibregl.Map({
         container,
-        center: [Number.isFinite(requestedLon) ? requestedLon : ALPHA_START_LOCATION.lon, Number.isFinite(requestedLat) ? requestedLat : ALPHA_START_LOCATION.lat],
-        zoom: Number.isFinite(requestedZoom) ? requestedZoom : ALPHA_START_LOCATION.zoom,
+        center: [requestedLon ?? ALPHA_START_LOCATION.lon, requestedLat ?? ALPHA_START_LOCATION.lat],
+        zoom: requestedZoom ?? ALPHA_START_LOCATION.zoom,
         style: {
           version: 8,
           sources: {

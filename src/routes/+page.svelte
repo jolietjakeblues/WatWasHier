@@ -7,6 +7,7 @@
   import type { LandscapeContext } from '$lib/domain';
   import { chooseHistoricalMap } from '$lib/historical';
   import { ALPHA_START_LOCATION } from '$lib/locations';
+  import { optionalNumber } from '$lib/url-params';
   import { onMount } from 'svelte';
 
   let context = $state<LandscapeContext | null>(null);
@@ -37,15 +38,15 @@
 
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
-    const lon = Number(params.get('lon'));
-    const lat = Number(params.get('lat'));
-    const year = Number(params.get('year'));
-    const edition = Number(params.get('edition'));
-    requestedYear = Number.isFinite(year) && year > 0 ? year : null;
-    requestedEdition = Number.isFinite(edition) && edition > 0 ? edition : null;
+    const lon = optionalNumber(params, 'lon');
+    const lat = optionalNumber(params, 'lat');
+    const year = optionalNumber(params, 'year');
+    const edition = optionalNumber(params, 'edition');
+    requestedYear = year !== null && year > 0 ? year : null;
+    requestedEdition = edition !== null && edition > 0 ? edition : null;
     void selectLocation(
-      Number.isFinite(lon) ? lon : ALPHA_START_LOCATION.lon,
-      Number.isFinite(lat) ? lat : ALPHA_START_LOCATION.lat
+      lon ?? ALPHA_START_LOCATION.lon,
+      lat ?? ALPHA_START_LOCATION.lat
     );
   });
 
