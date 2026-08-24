@@ -344,9 +344,9 @@
   .swatch--faces { background: #e67700; }
   .swatch--world { background: #1565c0; }
   .swatch--archaeology { background: #ca8a04; }
-  .map :global(.maplibregl-popup-content) { padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
+  .map :global(.maplibregl-popup-content) { max-height: min(620px, calc(100dvh - 96px)); padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
   .map :global(.maplibregl-popup-close-button) { z-index: 2; padding: 7px 10px; font-size: 20px; color: #344b43; }
-  .map :global(.feature-card) { min-width: 245px; padding: 18px; border-top: 5px solid #117865; color: #18332b; }
+  .map :global(.feature-card) { min-width: 245px; max-height: min(615px, calc(100dvh - 101px)); padding: 18px; overflow-y: auto; overscroll-behavior: contain; border-top: 5px solid #117865; color: #18332b; scrollbar-gutter: stable; }
   .map :global(.feature-card--rce) { border-top-color: #7c3aed; }
   .map :global(.feature-card--archaeology) { border-top-color: #ca8a04; }
   .map :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -379,7 +379,7 @@
     .hint { left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 0.78rem; }
     .layer-button { left: 10px; bottom: 10px; }
     .layer-control { left: 10px; bottom: 62px; width: calc(100% - 20px); max-height: calc(100% - 112px); padding: 14px; font-size: 12px; }
-    .map :global(.maplibregl-popup-content) { max-width: calc(100vw - 28px); }
-    .map :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); padding: 15px; }
+    .map :global(.maplibregl-popup-content) { max-width: calc(100vw - 28px); max-height: calc(54dvh - 40px); }
+    .map :global(.feature-card) { min-width: 0; width: min(270px, calc(100vw - 52px)); max-height: calc(54dvh - 45px); padding: 15px; }
   }
 </style>
