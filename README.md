@@ -4,7 +4,7 @@
 
 Publieke alfa: [https://watwashier.pages.dev](https://watwashier.pages.dev)
 
-> **ALFA 0.3:** dit is een publieke testversie. Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.
+> **ALFA 0.4:** dit is een publieke testversie. Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.
 
 Je klikt op een plek op de kaart en het systeem verzamelt context uit meerdere bronnen. Het doel is niet om alleen kaartlagen te stapelen, maar om brondata, tijd, geometrie en betekenis samen te brengen in controleerbare uitspraken.
 
@@ -23,7 +23,7 @@ De uiteindelijke toepassing combineert onder meer:
 - thesauri en SKOS voor semantische interpretatie;
 - een taalmodel voor synthese, waarbij bronnen en afleidingen expliciet van elkaar gescheiden blijven.
 
-## Status: alfa 0.3
+## Status: alfa 0.4
 
 Deze eerste versie bewijst de basisarchitectuur.
 
@@ -268,14 +268,26 @@ src/
 - [ ] linies
 - [x] provenance naar resource-URI's
 
-### 0.4 Semantiek
+### 0.4 Foto's en ErfGeo
+
+- [x] RCE-afbeeldingen koppelen op rijksmonumentnummer
+- [x] dubbele afbeeldingen uit `image` en `image-1` samenvoegen
+- [x] miniatuur, beschrijving, bron en licentie tonen
+- [x] klikcoördinaten server-side doorgeven
+- [x] woonplaats bepalen via PDOK Reverse en Lookup API
+- [x] ErfGeo-plaatsbeschrijvingen op woonplaatsnaam ophalen
+- [x] perioden, bron-URI en koppelingsonzekerheid tonen
+- [ ] filter op monumenten met foto
+- [ ] volledige fotogalerij
+
+### 0.5 Semantiek
 
 - [ ] CHT/ABR/SKOS-concepten koppelen
 - [ ] zoekterm naar concept-URI
 - [ ] `broader`, `narrower` en `related` gebruiken
 - [ ] semantische expansie controleerbaar tonen
 
-### 0.5 Veranderingdetectie
+### 0.6 Veranderingdetectie
 
 - [ ] historische en actuele geometrieën vergelijken
 - [ ] verdwenen waterloop
@@ -284,7 +296,7 @@ src/
 - [ ] historische structuur nog herkenbaar in huidige geometrie
 - [ ] `ChangeEvent`-model
 
-### 0.6 Vraag het landschap
+### 0.7 Vraag het landschap
 
 - [ ] natuurlijke taal als ingang
 - [ ] toolrouter over bronadapters

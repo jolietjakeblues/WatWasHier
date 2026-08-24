@@ -1,5 +1,7 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 import type { HeritageDetails } from '$lib/domain';
+import { getRceImages } from './rce-images';
+import { getErfGeoNames, getPlaceName } from './erfgeo';
 
 const BASE = 'https://api.pdok.nl/rce/beschermde-gebieden-cultuurhistorie/ogc/v1';
 const COLLECTIONS = ['rce_inspire_points', 'rce_inspire_polygons'];
@@ -49,7 +51,7 @@ function value(node: JsonLdNode | undefined, property: string): string | null {
   return item?.['@value'] !== undefined ? String(item['@value']) : item?.['@id'] ?? null;
 }
 
-export async function getRceMonumentDetails(monumentNumber: string, knownChoNumber?: string): Promise<HeritageDetails> {
+export async function getRceMonumentDetails(monumentNumber: string, knownChoNumber?: string, location?: { lon: number; lat: number }): Promise<HeritageDetails> {
   const url = new URL('https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run');
   url.searchParams.set('rijksmonumentnummer', monumentNumber);
   const response = await fetch(url, { headers: { accept: 'application/ld+json, application/json' } });
@@ -62,7 +64,12 @@ export async function getRceMonumentDetails(monumentNumber: string, knownChoNumb
   const address = [street && houseNumber ? `${street} ${houseNumber}` : street || houseNumber, postcode]
     .filter(Boolean).join(', ') || null;
   const choNumber = value(monument, 'cultuurhistorischObjectnummer') ?? knownChoNumber ?? null;
-  const semantic = choNumber ? await getChoSemantics(choNumber) : null;
+  const placeName = value(bag, 'woonplaatsnaam') ?? (location ? await getPlaceName(location.lon, location.lat).catch(() => null) : null);
+  const [semantic, images, historicalNames] = await Promise.all([
+    choNumber ? getChoSemantics(choNumber) : Promise.resolve(null),
+    getRceImages(monumentNumber).catch(() => []),
+    getErfGeoNames(placeName).catch(() => [])
+  ]);
   return {
     monumentNumber,
     choNumber,
@@ -72,7 +79,9 @@ export async function getRceMonumentDetails(monumentNumber: string, knownChoNumb
     resourceUrl: monument?.['@id'] ?? (choNumber ? `https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/${choNumber}` : null),
     description: semantic?.description ?? null,
     originalFunction: semantic?.originalFunction ?? null,
-    legalStatus: semantic?.legalStatus ?? null
+    legalStatus: semantic?.legalStatus ?? null,
+    images,
+    historicalNames
   };
 }
 

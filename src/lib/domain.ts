@@ -2,6 +2,26 @@ import type { Feature, FeatureCollection, Geometry, GeoJsonProperties } from 'ge
 
 export type BuildingFeature = Feature<Geometry, GeoJsonProperties>;
 
+export interface HeritageImage {
+  uri: string;
+  title: string | null;
+  description: string | null;
+  thumbnailUrl: string | null;
+  sourceUrl: string | null;
+  licenseUrl: string | null;
+  graph: string;
+}
+
+export interface HistoricalName {
+  uri: string;
+  label: string;
+  source: string | null;
+  startYear: number | null;
+  endYear: number | null;
+  matchMethod: 'place-label';
+  confidence: number;
+}
+
 export interface HeritageDetails {
   monumentNumber: string;
   choNumber: string | null;
@@ -12,6 +32,8 @@ export interface HeritageDetails {
   description: string | null;
   originalFunction: string | null;
   legalStatus: string | null;
+  images: HeritageImage[];
+  historicalNames: HistoricalName[];
 }
 
 export interface ArchaeologyRelation {

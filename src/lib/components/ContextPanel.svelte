@@ -48,7 +48,7 @@
   <header>
     <div class="title-row">
       <p class="eyebrow">Landschapsgeheugen</p>
-      <span class="alpha-label">ALFA 0.3</span>
+      <span class="alpha-label">ALFA 0.4</span>
     </div>
     <h1>Wat was hier?</h1>
     <p class="intro">
