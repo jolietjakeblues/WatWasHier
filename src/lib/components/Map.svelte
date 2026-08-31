@@ -24,6 +24,7 @@
   let historicalLayer: import('@allmaps/maplibre').WarpedMapLayer | null = null;
   let rendererMapId: string | null = null;
   let renderedHistoricalMapId: string | null = null;
+  let historicalLoadRequest = 0;
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
@@ -97,25 +98,37 @@
     if (context) marker?.setLngLat([context.location.lon, context.location.lat]);
   }
 
-  function syncHistoricalMap() {
-    if (!historicalLayer || !context) return;
+  async function syncHistoricalMap() {
+    if (!map || !context || !map.isStyleLoaded()) return;
     const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
     const nextId = selected?.id ?? null;
     if (nextId === renderedHistoricalMapId) return;
-    historicalLayer.clear();
+    if (selected && !map.getLayer('bag-buildings-fill')) return;
+    const requestId = ++historicalLoadRequest;
+    historicalLayer?.clear();
     rendererMapId = null;
-    renderedHistoricalMapId = nextId;
-    if (!selected) return;
+    if (!selected) {
+      renderedHistoricalMapId = null;
+      return;
+    }
+    if (!historicalLayer) {
+      const allmaps = await import('@allmaps/maplibre');
+      if (requestId !== historicalLoadRequest || !map) return;
+      historicalLayer = new allmaps.WarpedMapLayer();
+      map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject, 'bag-buildings-fill');
+    }
+    if (requestId !== historicalLoadRequest) return;
     rendererMapId = historicalLayer.addGeoreferencedMap(selected.georeferencedMap, {
       visible: true,
       opacity: historicalOpacity,
       applyMask: true,
       transformationType: 'thinPlateSpline'
     });
+    renderedHistoricalMapId = nextId;
   }
 
   $effect(() => { context; selectedBuildingId; syncData(); });
-  $effect(() => { context; selectedHistoricalMapId; syncHistoricalMap(); });
+  $effect(() => { context; selectedHistoricalMapId; void syncHistoricalMap(); });
   $effect(() => {
     historicalOpacity;
     if (historicalLayer && rendererMapId) {
@@ -143,7 +156,7 @@
       const requestedLon = optionalNumber(params, 'lon');
       const requestedLat = optionalNumber(params, 'lat');
       const requestedZoom = optionalNumber(params, 'zoom');
-      const [maplibregl, allmaps] = await Promise.all([import('maplibre-gl'), import('@allmaps/maplibre')]);
+      const maplibregl = await import('maplibre-gl');
       if (disposed) return;
       map = new maplibregl.Map({
         container,
@@ -175,8 +188,6 @@
 
       map.on('load', () => {
         if (!map) return;
-        historicalLayer = new allmaps.WarpedMapLayer();
-        map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject);
         map.addSource('bag-buildings', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'bag-buildings-fill', type: 'fill', source: 'bag-buildings', paint: { 'fill-color': '#117865', 'fill-opacity': 0.3 } });
         map.addLayer({ id: 'bag-buildings-line', type: 'line', source: 'bag-buildings', paint: { 'line-color': '#075a4b', 'line-width': 1.5 } });
@@ -196,7 +207,7 @@
         map.addLayer({ id: 'archaeology-lines', type: 'line', source: 'rce-archaeology', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': ['match', ['get', 'archaeologyType'], 'ArcheologischTerrein', '#92400e', 'Vondstlocatie', '#991b1b', '#854d0e'], 'line-width': 2, 'line-dasharray': [3, 2] } });
         map.addLayer({ id: 'archaeology-points', type: 'circle', source: 'rce-archaeology', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#dc2626', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         syncData();
-        syncHistoricalMap();
+        void syncHistoricalMap();
         syncLayerVisibility();
         urlReady = true;
         mapReady = true;

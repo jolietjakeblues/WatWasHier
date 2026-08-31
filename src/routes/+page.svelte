@@ -20,6 +20,7 @@
   let activeRequest: AbortController | null = null;
   let requestedYear: number | null = null;
   let requestedEdition: number | null = null;
+  let lastLocation = $state<{ lon: number; lat: number }>({ lon: ALPHA_START_LOCATION.lon, lat: ALPHA_START_LOCATION.lat });
 
   function updateUrl(values: Record<string, string | null>) {
     const url = new URL(window.location.href);
@@ -51,6 +52,7 @@
   });
 
   async function selectLocation(lon: number, lat: number) {
+    lastLocation = { lon, lat };
     selectedBuildingId = null;
     const requestId = ++requestCounter;
     activeRequest?.abort();
@@ -141,6 +143,7 @@
         return value !== undefined && value !== null && String(value) === selectedBuildingId;
       }) ?? null}
       bind:selectedHistoricalMapId
+      onretry={() => selectLocation(lastLocation.lon, lastLocation.lat)}
     />
   </section>
 </main>

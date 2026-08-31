@@ -133,7 +133,11 @@ interface LandscapeContext {
 
 Dit model wordt later uitgebreid met tijdintervallen, historische geometrieën, thesaurusconcepten, relaties en change events.
 
-## Bronnen in prototype 0.1
+## Bronnen in alfa 0.4
+
+De standaardachtergrond is de rustige **PDOK BRT Achtergrondkaart grijs** van Kadaster. De kaart toont de bronvermelding en CC BY 4.0-licentie in de MapLibre-attributie. Je kunt ook een PDOK-luchtfoto of geen achtergrond kiezen.
+
+Valt een externe databron tijdelijk uit, dan blijven resultaten uit de andere bronnen zichtbaar. De status verschijnt onder **Bronnen**. Met **Bronnen opnieuw proberen** haal je dezelfde locatie nogmaals op.
 
 ### PDOK BAG
 
@@ -294,6 +298,9 @@ src/
 - [x] OpenStreetMap verwijderen omdat deze achtergrond te druk is en afleidt
 - [x] OpenStreetMap vervangen door de rustige PDOK BRT Achtergrondkaart grijs
 - [x] PDOK BRT-bronvermelding en CC BY 4.0-attributie in de kaart opnemen
+- [x] herstelknop tonen wanneer een externe databron tijdelijk uitvalt
+- [x] historische kaartselectie en bronherstel met Playwright testen
+- [x] Allmaps pas laden wanneer een historische kaart beschikbaar is
 
 ### 0.5 Semantiek
 

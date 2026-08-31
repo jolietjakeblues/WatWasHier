@@ -6,13 +6,15 @@
     loading,
     error,
     selectedBuilding,
-    selectedHistoricalMapId = $bindable()
+    selectedHistoricalMapId = $bindable(),
+    onretry
   }: {
     context: LandscapeContext | null;
     loading: boolean;
     error: string | null;
     selectedBuilding: BuildingFeature | null;
     selectedHistoricalMapId: string | null;
+    onretry: () => void;
   } = $props();
 
   const labels: Record<AssertionType, string> = {
@@ -67,7 +69,7 @@
   {/if}
 
   {#if error}
-    <div class="error">{error}</div>
+    <div class="error"><span>{error}</span><button type="button" onclick={onretry}>Opnieuw proberen</button></div>
   {:else if context}
     {#if selectedBuilding}
       <section class="selected-building" aria-live="polite">
@@ -236,6 +238,9 @@
           </li>
         {/each}
       </ul>
+      {#if context.sourceStatus.some((source) => source.status === 'unavailable')}
+        <button class="retry-button" type="button" onclick={onretry}>Bronnen opnieuw proberen</button>
+      {/if}
       <ol class="sources">
         {#each context.provenance as source}
           <li>
@@ -321,6 +326,9 @@
     background: #eef4f1;
   }
   .error, .warning { background: #fff0eb; color: #7a2f20; }
+  .error { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .error button, .retry-button { min-height: 38px; padding: 7px 11px; border: 1px solid #8b3524; border-radius: 8px; background: #fff; color: #7a2f20; font: inherit; font-weight: 700; cursor: pointer; }
+  .retry-button { margin: -7px 0 16px; }
   .coords { display: grid; gap: 8px; margin: 0; }
   .coords div { display: flex; justify-content: space-between; gap: 18px; }
   dt { color: #66716d; }

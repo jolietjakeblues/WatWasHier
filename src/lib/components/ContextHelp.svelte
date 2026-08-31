@@ -5,8 +5,8 @@
   const steps = [
     ['Onderzoek een plek', 'Klik op de kaart. WatWasHier centreert op die plek en verzamelt actuele gebouwen, erfgoed, archeologie en historische kaarten.'],
     ['Bekijk objectdetails', 'Zet een kaartlaag aan en klik op een gekleurd object. Een groen vlak is een BAG-pand. Andere kleuren tonen erfgoed of archeologische informatie.'],
-    ['Reis door de tijd', 'Kies een jaar op de tijdlijn. Met Doorzichtigheid vergelijk je de historische Waterstaatskaart met de huidige achtergrondkaart.'],
-    ['Controleer en deel', 'Bronfeiten komen rechtstreeks uit een bron. Observaties zijn berekend. Hypotheses zijn interpretaties. Open i voor de herkomst en gebruik de deelknop om deze plek, kaartstand en lagen te delen.']
+    ['Reis door de tijd', 'Kies een jaar op de tijdlijn. Met Doorzichtigheid vergelijk je de historische Waterstaatskaart met de rustige PDOK BRT-achtergrond.'],
+    ['Controleer en deel', 'Bronfeiten komen rechtstreeks uit een bron. Observaties zijn berekend. Hypotheses zijn interpretaties. Bij een bronstoring kun je de bronnen opnieuw proberen. Open i voor de herkomst en gebruik de deelknop om deze plek, kaartstand en lagen te delen.']
   ] as const;
 
   let open = $state(false);

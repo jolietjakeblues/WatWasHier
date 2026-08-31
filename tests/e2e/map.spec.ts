@@ -83,6 +83,18 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
 });
 
+test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {
+  const data = context();
+  data.historical.maps = [
+    { id: 'kaart-1925', label: 'Waterstaatskaart 1925', yearStart: 1924, yearEnd: 1925, edition: 2, manifestUrl: null, annotationUrl: 'https://example.test/1925', georeferencedMap: {} },
+    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: {} }
+  ];
+  await prepare(page, data);
+  await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
+  await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
+});
+
 test('toont een bronstoring zonder de overige resultaten te verbergen', async ({ page }) => {
   const data = context();
   data.sourceStatus[2] = {
@@ -90,8 +102,18 @@ test('toont een bronstoring zonder de overige resultaten te verbergen', async ({
     checkedAt: '2026-08-31T12:00:00Z', message: 'RCE-erfgoed antwoordde niet op tijd.'
   };
   data.warnings = ['RCE-erfgoed antwoordde niet op tijd. Andere bronnen blijven beschikbaar.'];
-  await prepare(page, data);
+  let requests = 0;
+  await page.addInitScript(() => localStorage.setItem('watwashier:context-help:0.4', 'seen'));
+  await page.route('**/api/context?**', (route) => {
+    requests++;
+    return route.fulfill({ json: requests === 1 ? data : context() });
+  });
+  await page.goto('/');
+  await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await expect(page.getByText('RCE-erfgoed antwoordde niet op tijd. Andere bronnen blijven beschikbaar.')).toBeVisible();
   await expect(page.getByText('PDOK BAG', { exact: true })).toBeVisible();
   await expect(page.getByText('Tijdelijk niet beschikbaar', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Bronnen opnieuw proberen' }).click();
+  await expect.poll(() => requests).toBe(2);
+  await expect(page.getByText('Tijdelijk niet beschikbaar', { exact: true })).not.toBeVisible();
 });
