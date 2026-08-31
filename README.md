@@ -290,10 +290,10 @@ src/
 
 - [x] gedeelde server-side fetchlaag met timeout en foutclassificatie
 - [x] bronstatus per kerndatabron in het contextmodel en de interface
-- [x] Playwright-tests voor kaartklik, gebouwpopup, lagen, historische doorzichtigheid en deelbare URL
-- [ ] OpenStreetMap verwijderen omdat deze achtergrond te druk is en afleidt
-- [ ] OpenStreetMap vervangen door de rustige PDOK BRT Achtergrondkaart grijs
-- [ ] PDOK BRT-bronvermelding en CC BY 4.0-attributie in de kaart opnemen
+- [x] Playwright-tests voor kaartklik, gebouwgegevens, lagen, historische doorzichtigheid en deelbare URL
+- [x] OpenStreetMap verwijderen omdat deze achtergrond te druk is en afleidt
+- [x] OpenStreetMap vervangen door de rustige PDOK BRT Achtergrondkaart grijs
+- [x] PDOK BRT-bronvermelding en CC BY 4.0-attributie in de kaart opnemen
 
 ### 0.5 Semantiek
 
@@ -359,7 +359,7 @@ De app bewaart de gekozen kaarttoestand in de URL. De deelknop gebruikt daardoor
 | `lon`, `lat` | middelpunt van de kaart | `lon=6.067779&lat=52.498626` |
 | `zoom` | zoomniveau | `zoom=14.20` |
 | `year`, `edition` | gekozen historische kaart | `year=1966&edition=4` |
-| `background` | `osm`, `aerial` of `none` | `background=aerial` |
+| `background` | `brt`, `aerial` of `none` | `background=brt` |
 | `opacity` | doorzichtigheid historische kaart | `opacity=0.72` |
 | `history`, `bag`, `monuments`, `faces`, `world`, `archaeology` | zichtbaarheid per kaartlaag, `1` of `0` | `archaeology=1` |
 

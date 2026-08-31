@@ -21,4 +21,12 @@ describe('fetchSourceJson', () => {
     await expect(fetchSourceJson('https://example.test', { source: 'Testbron' }))
       .rejects.toBeInstanceOf(SourceFetchError);
   });
+
+  it('classificeert een timeout', async () => {
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+    })));
+    await expect(fetchSourceJson('https://example.test', { source: 'Trage bron', timeoutMs: 5 }))
+      .rejects.toMatchObject({ source: 'Trage bron', kind: 'timeout' });
+  });
 });

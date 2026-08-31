@@ -31,7 +31,7 @@
   let showArchaeology = $state(true);
   let showHistorical = $state(true);
   let layerPanelOpen = $state(false);
-  let background = $state<'osm' | 'aerial' | 'none'>('osm');
+  let background = $state<'brt' | 'aerial' | 'none'>('brt');
   let urlReady = false;
   let popupRequest = 0;
   let heritagePanelHtml = $state<string | null>(null);
@@ -51,7 +51,7 @@
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
     if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
-    if (map.getLayer('osm')) map.setLayoutProperty('osm', 'visibility', background === 'osm' ? 'visible' : 'none');
+    if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
     if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
   }
 
@@ -130,7 +130,8 @@
     void (async () => {
       const params = new URLSearchParams(window.location.search);
       const requestedBackground = params.get('background');
-      if (requestedBackground === 'osm' || requestedBackground === 'aerial' || requestedBackground === 'none') background = requestedBackground;
+      if (requestedBackground === 'osm') background = 'brt';
+      if (requestedBackground === 'brt' || requestedBackground === 'aerial' || requestedBackground === 'none') background = requestedBackground;
       showHistorical = paramEnabled(params, 'history');
       showBuildings = paramEnabled(params, 'bag');
       showHeritage = paramEnabled(params, 'monuments');
@@ -151,11 +152,11 @@
         style: {
           version: 8,
           sources: {
-            osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' },
+            'brt-gray': { type: 'raster', tiles: ['https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png'], tileSize: 256, attribution: 'Kaart: Kadaster / PDOK, CC BY 4.0' },
             aerial: { type: 'raster', tiles: ['https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg'], tileSize: 256, attribution: 'Luchtfoto: PDOK' }
           },
           layers: [
-            { id: 'osm', type: 'raster', source: 'osm' },
+            { id: 'brt-gray', type: 'raster', source: 'brt-gray' },
             { id: 'aerial', type: 'raster', source: 'aerial', layout: { visibility: 'none' } }
           ]
         }
@@ -311,7 +312,7 @@
       <header><strong>Kaartlagen</strong><button type="button" aria-label="Sluit kaartlagen" onclick={() => layerPanelOpen = false}>×</button></header>
       <fieldset>
         <legend>Achtergrond</legend>
-        <label><input type="radio" name="background" value="osm" bind:group={background} />OpenStreetMap</label>
+        <label><input type="radio" name="background" value="brt" bind:group={background} />PDOK BRT grijs</label>
         <label><input type="radio" name="background" value="aerial" bind:group={background} />Satellietbeeld</label>
         <label><input type="radio" name="background" value="none" bind:group={background} />Geen achtergrond</label>
       </fieldset>

@@ -1,8 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { LandscapeContext } from '../../src/lib/domain';
+import type { Feature } from 'geojson';
 
 const point = { lon: 6.0668, lat: 52.495 };
 
-function context(buildings: object[] = []) {
+function context(buildings: Feature[] = []): LandscapeContext {
   return {
     location: { ...point, radiusMeters: 250, heritageRadiusMeters: 600, bbox: [6.063, 52.493, 6.071, 52.497] },
     current: { buildings: { type: 'FeatureCollection', features: buildings } },
@@ -46,21 +48,17 @@ test('kaartklik onderzoekt een nieuwe plek', async ({ page }) => {
   await expect.poll(() => requests).toBeGreaterThan(1);
 });
 
-test('klik op een BAG-pand toont de gebouwpopup', async ({ page }) => {
-  const building = {
+test('klik op een BAG-pand toont de gebouwgegevens', async ({ page }) => {
+  const building: Feature = {
     type: 'Feature', id: 'pand-1',
     properties: { identificatie: '0193100000001590', bouwjaar: 1930, status: 'Pand in gebruik' },
-    geometry: { type: 'Polygon', coordinates: [[[6.062,52.492],[6.072,52.492],[6.072,52.498],[6.062,52.498],[6.062,52.492]]] }
+    geometry: { type: 'Polygon', coordinates: [[[6.04,52.47],[6.10,52.47],[6.10,52.52],[6.04,52.52],[6.04,52.47]]] }
   };
   await prepare(page, context([building]));
-  const canvas = page.locator('.maplibregl-canvas');
-  await expect(canvas).toBeVisible();
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Kaartcanvas heeft geen afmetingen');
-  await canvas.click({ position: { x: box.width / 2 + 30, y: box.height / 2 } });
-  const popup = page.locator('.maplibregl-popup-content');
-  await expect(popup).toContainText('0193100000001590');
-  await expect(popup).toContainText('Bouwjaar');
+  await page.getByText('Pand 0193100000001590', { exact: true }).click();
+  const buildingDetails = page.locator('details').filter({ hasText: 'Pand 0193100000001590' });
+  await expect(buildingDetails).toContainText('Bouwjaar');
+  await expect(buildingDetails).toContainText('1930');
 });
 
 test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ page }) => {
@@ -83,4 +81,17 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
   await expect(page.getByLabel('BAG-panden')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
+});
+
+test('toont een bronstoring zonder de overige resultaten te verbergen', async ({ page }) => {
+  const data = context();
+  data.sourceStatus[2] = {
+    source: 'rce', label: 'RCE-erfgoed', status: 'unavailable',
+    checkedAt: '2026-08-31T12:00:00Z', message: 'RCE-erfgoed antwoordde niet op tijd.'
+  };
+  data.warnings = ['RCE-erfgoed antwoordde niet op tijd. Andere bronnen blijven beschikbaar.'];
+  await prepare(page, data);
+  await expect(page.getByText('RCE-erfgoed antwoordde niet op tijd. Andere bronnen blijven beschikbaar.')).toBeVisible();
+  await expect(page.getByText('PDOK BAG', { exact: true })).toBeVisible();
+  await expect(page.getByText('Tijdelijk niet beschikbaar', { exact: true })).toBeVisible();
 });
