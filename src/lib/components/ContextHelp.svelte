@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  const storageKey = 'watwashier:context-help:0.3';
+  const storageKey = 'watwashier:context-help:0.4';
   const steps = [
     ['Onderzoek een plek', 'Klik op de kaart. WatWasHier centreert op die plek en verzamelt actuele gebouwen, erfgoed, archeologie en historische kaarten.'],
     ['Bekijk objectdetails', 'Zet een kaartlaag aan en klik op een gekleurd object. Een groen vlak is een BAG-pand. Andere kleuren tonen erfgoed of archeologische informatie.'],

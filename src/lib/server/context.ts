@@ -1,9 +1,10 @@
-import type { LandscapeContext, LocationSelection, Provenance } from '$lib/domain';
+import type { LandscapeContext, LocationSelection, Provenance, SourceStatus } from '$lib/domain';
 import { getBagBuildings } from './sources/pdok';
 import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
 import { bboxAroundPoint } from '$lib/geo';
+import { SourceFetchError } from './source-fetch';
 
 const now = () => new Date().toISOString();
 
@@ -13,6 +14,25 @@ function sourceWarning(source: string, reason: unknown): string {
   return timeout
     ? `${source} reageerde niet op tijd. De overige bronnen zijn wel verwerkt.`
     : `${source} is tijdelijk niet beschikbaar. De overige bronnen zijn wel verwerkt.`;
+}
+
+function statusFor(
+  source: SourceStatus['source'],
+  label: string,
+  result: PromiseSettledResult<unknown>
+): SourceStatus {
+  if (result.status === 'fulfilled') {
+    return { source, label, status: 'available', checkedAt: now() };
+  }
+  const error = result.reason instanceof SourceFetchError ? result.reason : null;
+  return {
+    source,
+    label,
+    status: 'unavailable',
+    checkedAt: now(),
+    failureKind: error?.kind,
+    message: sourceWarning(label, result.reason)
+  };
 }
 
 export async function buildLandscapeContext(
@@ -94,6 +114,12 @@ export async function buildLandscapeContext(
   }
 
   const buildingCount = buildings.features.length;
+  const sourceStatus: SourceStatus[] = [
+    statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
+    statusFor('watertijdreis', 'Watertijdreis', historyResult),
+    statusFor('rce', 'RCE-erfgoed', heritageResult),
+    statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult)
+  ];
 
   return {
     location,
@@ -149,6 +175,7 @@ export async function buildLandscapeContext(
       }
     ],
     provenance,
+    sourceStatus,
     warnings
   };
 }

@@ -61,7 +61,7 @@
           <a href="https://github.com/jolietjakeblues/WatWasHier" target="_blank" rel="noreferrer">Bekijk broncode en documentatie</a>
         </section>
 
-        <p class="alpha-note"><strong>ALFA 0.3</strong> Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.</p>
+        <p class="alpha-note"><strong>ALFA 0.4</strong> Gegevens kunnen onvolledig zijn en onderdelen kunnen nog veranderen.</p>
       </div>
     </div>
   </div>

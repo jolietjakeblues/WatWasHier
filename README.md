@@ -195,6 +195,7 @@ Controleren:
 npm run check
 npm run build
 npm run test
+npm run test:e2e
 ```
 
 ## Configuratie
@@ -284,6 +285,15 @@ src/
 - [x] perioden, bron-URI en koppelingsonzekerheid tonen
 - [ ] filter op monumenten met foto
 - [ ] volledige fotogalerij
+
+### 0.5 Kaartbediening en betrouwbaarheid
+
+- [x] gedeelde server-side fetchlaag met timeout en foutclassificatie
+- [x] bronstatus per kerndatabron in het contextmodel en de interface
+- [x] Playwright-tests voor kaartklik, gebouwpopup, lagen, historische doorzichtigheid en deelbare URL
+- [ ] OpenStreetMap verwijderen omdat deze achtergrond te druk is en afleidt
+- [ ] OpenStreetMap vervangen door de rustige PDOK BRT Achtergrondkaart grijs
+- [ ] PDOK BRT-bronvermelding en CC BY 4.0-attributie in de kaart opnemen
 
 ### 0.5 Semantiek
 

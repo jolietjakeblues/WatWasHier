@@ -1,4 +1,5 @@
 import type { HeritageImage } from '$lib/domain';
+import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/services/cho/sparql';
 const IMAGE_GRAPHS = [
@@ -49,8 +50,6 @@ SELECT ?graph ?image ?title ?description ?thumbnail ?preview ?source ?license WH
 } LIMIT 48`;
   const endpoint = new URL(ENDPOINT);
   endpoint.searchParams.set('query', query);
-  const response = await fetch(endpoint, { headers: { accept: 'application/sparql-results+json' } });
-  if (!response.ok) return [];
-  const result = await response.json() as { results?: { bindings?: Binding[] } };
+  const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE afbeeldingen', headers: { accept: 'application/sparql-results+json' } });
   return parseRceImages(result.results?.bindings ?? []).slice(0, 12);
 }

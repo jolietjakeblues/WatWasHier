@@ -227,6 +227,15 @@
 
     <section>
       <h2>Bronnen</h2>
+      <ul class="source-status" aria-label="Status van databronnen">
+        {#each context.sourceStatus as source}
+          <li class:unavailable={source.status === 'unavailable'}>
+            <span aria-hidden="true"></span>
+            <strong>{source.label}</strong>
+            <small>{source.status === 'available' ? 'Beschikbaar' : 'Tijdelijk niet beschikbaar'}</small>
+          </li>
+        {/each}
+      </ul>
       <ol class="sources">
         {#each context.provenance as source}
           <li>
@@ -334,6 +343,12 @@
   }
   .type-hypothesis { border-style: dashed; background: #fffaf0; }
   .sources { margin: 0; padding-left: 20px; }
+  .source-status { display: grid; gap: 7px; margin: 0 0 16px; padding: 0; list-style: none; }
+  .source-status li { display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #eef7f3; }
+  .source-status li > span { width: 9px; height: 9px; border-radius: 50%; background: #117865; }
+  .source-status li small { color: #53615c; }
+  .source-status li.unavailable { background: #fff0eb; }
+  .source-status li.unavailable > span { background: #a83c25; }
   .sources li + li { margin-top: 12px; }
   .sources strong, .sources a { display: block; }
   .sources a { margin-top: 3px; color: #0b6f60; }

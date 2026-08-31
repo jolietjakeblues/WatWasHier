@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, Geometry, GeoJsonProperties, Position } from 'geojson';
 import type { ArchaeologyDetails, ArchaeologyRelation } from '$lib/domain';
+import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/services/cho/sparql';
 const CEO = 'https://linkeddata.cultureelerfgoed.nl/def/ceo#';
@@ -46,9 +47,7 @@ SELECT DISTINCT ?direction ?object ?class ?name ?cho ?archis ?amount WHERE {
 } LIMIT 500`;
   const url = new URL(ENDPOINT);
   url.searchParams.set('query', query);
-  const response = await fetch(url, { headers: { accept: 'application/sparql-results+json' }, signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`RCE CHO antwoordde met ${response.status}`);
-  const json = await response.json() as { results?: { bindings?: Binding[] } };
+  const json = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(url, { source: 'RCE CHO archeologiedetails', timeoutMs: 15_000, headers: { accept: 'application/sparql-results+json' } });
   const relations = normalizeArchaeologyRelations(json.results?.bindings ?? []);
   const counts = new Map<string, number>();
   for (const relation of relations) counts.set(relation.type, (counts.get(relation.type) ?? 0) + 1);
@@ -96,9 +95,7 @@ SELECT ?object ?class ?wkt ?cho ?archis ?naam (COUNT(DISTINCT ?linkedObject) AS 
 } GROUP BY ?object ?class ?wkt ?cho ?archis ?naam LIMIT 75`;
   const url = new URL(ENDPOINT);
   url.searchParams.set('query', query);
-  const response = await fetch(url, { headers: { accept: 'application/sparql-results+json' }, signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`RCE CHO antwoordde met ${response.status}`);
-  const json = await response.json() as { results?: { bindings?: Binding[] } };
+  const json = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(url, { source: 'RCE CHO archeologie', timeoutMs: 15_000, headers: { accept: 'application/sparql-results+json' } });
   const features: Feature<Geometry, GeoJsonProperties>[] = [];
   for (const row of json.results?.bindings ?? []) {
     const geometry = row.wkt?.value ? parseWkt(row.wkt.value) : null;

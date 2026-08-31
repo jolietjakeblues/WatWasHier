@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { HistoricalMap } from '$lib/domain';
 import { pointInPolygon } from '$lib/geo';
+import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const DEFAULT_COLLECTION =
   'https://tu-delft-heritage.github.io/watertijdreis-data/collection.json';
@@ -59,20 +60,10 @@ export function mapsCoveringPoint(
 export async function getWatertijdreisContext(point: [number, number]) {
   const collectionUrl = env.WATERTIJDREIS_COLLECTION_URL || DEFAULT_COLLECTION;
   const annotationUrl = env.WATERTIJDREIS_MAP_INDEX_URL || DEFAULT_MAP_INDEX;
-  const [collectionResponse, mapsResponse] = await Promise.all([
-    fetch(collectionUrl, { headers: { accept: 'application/json' } }),
-    fetch(annotationUrl, { headers: { accept: 'application/json' } })
+  const [collection, maps] = await Promise.all([
+    fetchSourceJson<IiifCollection>(collectionUrl, { source: 'Watertijdreis IIIF-collectie', headers: { accept: 'application/json' } }),
+    fetchSourceJson<GeoreferencedMap[]>(annotationUrl, { source: 'Watertijdreis kaartindex', headers: { accept: 'application/json' } })
   ]);
-
-  if (!collectionResponse.ok) {
-    throw new Error(`Watertijdreis IIIF collection antwoordde met ${collectionResponse.status}`);
-  }
-  if (!mapsResponse.ok) {
-    throw new Error(`Watertijdreis kaartindex antwoordde met ${mapsResponse.status}`);
-  }
-
-  const collection = (await collectionResponse.json()) as IiifCollection;
-  const maps = (await mapsResponse.json()) as GeoreferencedMap[];
 
   return {
     title: labelValue(collection.label),

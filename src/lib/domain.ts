@@ -71,6 +71,15 @@ export interface Provenance {
   license?: string;
 }
 
+export interface SourceStatus {
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology';
+  label: string;
+  status: 'available' | 'unavailable';
+  checkedAt: string;
+  failureKind?: 'timeout' | 'http' | 'network' | 'invalid-response';
+  message?: string;
+}
+
 export interface Assertion {
   id: string;
   type: AssertionType;
@@ -111,5 +120,6 @@ export interface LandscapeContext {
   };
   assertions: Assertion[];
   provenance: Provenance[];
+  sourceStatus: SourceStatus[];
   warnings: string[];
 }

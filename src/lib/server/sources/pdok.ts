@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
+import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const DEFAULT_BASE = 'https://api.pdok.nl/kadaster/bag/ogc/v2';
 const MAX_FEATURES = 5000;
@@ -22,15 +23,10 @@ export async function getBagBuildings(
   let nextUrl: string | null = url.toString();
 
   while (nextUrl && features.length < MAX_FEATURES) {
-    const response = await fetch(nextUrl, {
+    const page: PdokFeatureCollection = await fetchSourceJson<PdokFeatureCollection>(nextUrl, {
+      source: 'PDOK BAG',
       headers: { accept: 'application/geo+json, application/json' }
     });
-
-    if (!response.ok) {
-      throw new Error(`PDOK BAG antwoordde met ${response.status}`);
-    }
-
-    const page = (await response.json()) as PdokFeatureCollection;
     features.push(...page.features.slice(0, MAX_FEATURES - features.length));
     nextUrl = page.links?.find((link) => link.rel === 'next')?.href ?? null;
   }

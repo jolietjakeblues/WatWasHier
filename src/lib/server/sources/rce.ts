@@ -2,6 +2,7 @@ import type { FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 import type { HeritageDetails } from '$lib/domain';
 import { getRceImages } from './rce-images';
 import { getErfGeoNames, getPlaceName } from './erfgeo';
+import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const BASE = 'https://api.pdok.nl/rce/beschermde-gebieden-cultuurhistorie/ogc/v1';
 const COLLECTIONS = ['rce_inspire_points', 'rce_inspire_polygons'];
@@ -14,9 +15,10 @@ async function getCollection(
   url.searchParams.set('f', 'json');
   url.searchParams.set('bbox', bbox.join(','));
   url.searchParams.set('limit', '1000');
-  const response = await fetch(url, { headers: { accept: 'application/geo+json, application/json' } });
-  if (!response.ok) throw new Error(`RCE antwoordde met ${response.status}`);
-  return response.json();
+  return fetchSourceJson<FeatureCollection<Geometry, GeoJsonProperties>>(url, {
+    source: `RCE ${collection}`,
+    headers: { accept: 'application/geo+json, application/json' }
+  });
 }
 
 export async function getRceHeritage(
@@ -67,8 +69,10 @@ function value(node: JsonLdNode | undefined, property: string): string | null {
 export async function getRceMonumentDetails(monumentNumber: string, knownChoNumber?: string, location?: { lon: number; lat: number }): Promise<HeritageDetails> {
   const url = new URL('https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run');
   url.searchParams.set('rijksmonumentnummer', monumentNumber);
-  const response = await fetch(url, { headers: { accept: 'application/ld+json, application/json' } });
-  const graph = response.ok ? (await response.json()) as JsonLdNode[] : [];
+  const graph = await fetchSourceJson<JsonLdNode[]>(url, {
+    source: 'RCE monumentdetails',
+    headers: { accept: 'application/ld+json, application/json' }
+  });
   const monument = graph.find((node) => node['@type']?.some((type) => type.endsWith('#Rijksmonument')));
   const bag = graph.find((node) => node['@type']?.some((type) => type.endsWith('#BAGRelatie')));
   const street = value(bag, 'openbareRuimte');
@@ -110,9 +114,10 @@ SELECT ?omschrijving ?functie ?juridischeStatus ?inschrijfdatum WHERE {
 } LIMIT 10`;
   const endpoint = new URL('https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/services/cho/sparql');
   endpoint.searchParams.set('query', query);
-  const response = await fetch(endpoint, { headers: { accept: 'application/sparql-results+json' } });
-  if (!response.ok) return null;
-  const result = await response.json() as { results?: { bindings?: Array<Record<string, { value?: string }>> } };
+  const result = await fetchSourceJson<{ results?: { bindings?: Array<Record<string, { value?: string }>> } }>(endpoint, {
+    source: 'RCE CHO monumentsemantiek',
+    headers: { accept: 'application/sparql-results+json' }
+  });
   const row = result.results?.bindings?.[0];
   return {
     description: row?.omschrijving?.value ?? null,
