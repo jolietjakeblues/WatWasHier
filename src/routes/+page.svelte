@@ -21,6 +21,8 @@
   let requestedYear: number | null = null;
   let requestedEdition: number | null = null;
   let lastLocation = $state<{ lon: number; lat: number }>({ lon: ALPHA_START_LOCATION.lon, lat: ALPHA_START_LOCATION.lat });
+  let radiusMeters = $state(250);
+  let heritageRadiusMeters = $state(600);
 
   function updateUrl(values: Record<string, string | null>) {
     const url = new URL(window.location.href);
@@ -45,6 +47,10 @@
     const edition = optionalNumber(params, 'edition');
     requestedYear = year !== null && year > 0 ? year : null;
     requestedEdition = edition !== null && edition > 0 ? edition : null;
+    const radius = optionalNumber(params, 'radius');
+    const heritageRadius = optionalNumber(params, 'heritageRadius');
+    radiusMeters = radius === null ? 250 : Math.min(1000, Math.max(25, radius));
+    heritageRadiusMeters = heritageRadius === null ? 600 : Math.min(2000, Math.max(100, heritageRadius));
     void selectLocation(
       lon ?? ALPHA_START_LOCATION.lon,
       lat ?? ALPHA_START_LOCATION.lat
@@ -65,7 +71,8 @@
       const params = new URLSearchParams({
         lon: String(lon),
         lat: String(lat),
-        radius: '250'
+        radius: String(radiusMeters),
+        heritageRadius: String(heritageRadiusMeters)
       });
 
       const response = await fetch(`/api/context?${params}`, {
@@ -105,6 +112,15 @@
     }
   }
 
+  function previewRadii() {
+    updateUrl({ radius: String(radiusMeters), heritageRadius: String(heritageRadiusMeters) });
+  }
+
+  function commitRadii() {
+    previewRadii();
+    void selectLocation(lastLocation.lon, lastLocation.lat);
+  }
+
   $effect(() => {
     if (!context || !selectedHistoricalMapId) return;
     const map = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
@@ -128,6 +144,10 @@
       {selectedHistoricalMapId}
       bind:historicalOpacity
       {selectedBuildingId}
+      {radiusMeters}
+      {heritageRadiusMeters}
+      searchLon={lastLocation.lon}
+      searchLat={lastLocation.lat}
       onlocationselect={selectLocation}
       onbuildingselect={(buildingId) => (selectedBuildingId = buildingId)}
     />
@@ -143,6 +163,10 @@
         return value !== undefined && value !== null && String(value) === selectedBuildingId;
       }) ?? null}
       bind:selectedHistoricalMapId
+      bind:radiusMeters
+      bind:heritageRadiusMeters
+      onradiuspreview={previewRadii}
+      onradiuscommit={commitRadii}
       onretry={() => selectLocation(lastLocation.lon, lastLocation.lat)}
     />
   </section>

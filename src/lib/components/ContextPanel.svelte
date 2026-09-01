@@ -7,6 +7,10 @@
     error,
     selectedBuilding,
     selectedHistoricalMapId = $bindable(),
+    radiusMeters = $bindable(),
+    heritageRadiusMeters = $bindable(),
+    onradiuspreview,
+    onradiuscommit,
     onretry
   }: {
     context: LandscapeContext | null;
@@ -14,6 +18,10 @@
     error: string | null;
     selectedBuilding: BuildingFeature | null;
     selectedHistoricalMapId: string | null;
+    radiusMeters: number;
+    heritageRadiusMeters: number;
+    onradiuspreview: () => void;
+    onradiuscommit: () => void;
     onretry: () => void;
   } = $props();
 
@@ -94,6 +102,17 @@
         <div><dt>Plekcontext</dt><dd>{context.location.radiusMeters} m</dd></div>
         <div><dt>Rijksmonumenten</dt><dd>{context.location.heritageRadiusMeters} m</dd></div>
       </dl>
+      <div class="radius-controls">
+        <label>
+          <span><strong>Plekcontext</strong><output>{radiusMeters} m</output></span>
+          <input aria-label="Zoekstraal plekcontext" type="range" min="25" max="1000" step="25" value={radiusMeters} oninput={(event) => { radiusMeters = Number(event.currentTarget.value); onradiuspreview(); }} onchange={onradiuscommit} />
+        </label>
+        <label>
+          <span><strong>Rijksmonumenten</strong><output>{heritageRadiusMeters} m</output></span>
+          <input aria-label="Zoekstraal rijksmonumenten" type="range" min="100" max="2000" step="100" value={heritageRadiusMeters} oninput={(event) => { heritageRadiusMeters = Number(event.currentTarget.value); onradiuspreview(); }} onchange={onradiuscommit} />
+        </label>
+        <small>De kaart wordt opnieuw onderzocht wanneer je de schuif loslaat.</small>
+      </div>
     </section>
 
     <section>
@@ -331,6 +350,12 @@
   .retry-button { margin: -7px 0 16px; }
   .coords { display: grid; gap: 8px; margin: 0; }
   .coords div { display: flex; justify-content: space-between; gap: 18px; }
+  .radius-controls { display: grid; gap: 13px; margin-top: 16px; padding: 13px; border: 1px solid #dce3df; border-radius: 10px; background: #f8faf8; }
+  .radius-controls label { display: grid; gap: 7px; }
+  .radius-controls label span { display: flex; justify-content: space-between; gap: 12px; }
+  .radius-controls output { color: #0b6f60; font-weight: 750; }
+  .radius-controls input { width: 100%; accent-color: #117865; }
+  .radius-controls small { color: #66716d; line-height: 1.4; }
   dt { color: #66716d; }
   dd { margin: 0; font-variant-numeric: tabular-nums; }
   article {

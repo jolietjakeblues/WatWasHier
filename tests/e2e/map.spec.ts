@@ -66,7 +66,7 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await page.getByLabel('Geen achtergrond').check();
   await page.getByLabel('BAG-panden').uncheck();
-  await page.getByRole('slider').fill('0.35');
+  await page.locator('.opacity-control input').fill('0.35');
   await expect.poll(() => new URL(page.url()).searchParams.get('background')).toBe('none');
   await expect.poll(() => new URL(page.url()).searchParams.get('bag')).toBe('0');
   await expect.poll(() => new URL(page.url()).searchParams.get('opacity')).toBe('0.35');
@@ -75,12 +75,14 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&history=1&opacity=0.40');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
   await expect(page.getByLabel('BAG-panden')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
+  await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
+  await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {
@@ -93,6 +95,29 @@ test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page
   await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
   await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
+});
+
+test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {
+  let requests = 0;
+  await page.addInitScript(() => localStorage.setItem('watwashier:context-help:0.4', 'seen'));
+  await page.route('**/api/context?**', (route) => {
+    requests++;
+    return route.fulfill({ json: context() });
+  });
+  await page.goto('/');
+  await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
+  await expect.poll(() => requests).toBe(1);
+  const radius = page.getByLabel('Zoekstraal plekcontext');
+  await radius.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '500';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect.poll(() => new URL(page.url()).searchParams.get('radius')).toBe('500');
+  expect(requests).toBe(1);
+  await radius.evaluate((element) => element.dispatchEvent(new Event('change', { bubbles: true })));
+  await expect.poll(() => requests).toBe(2);
+  await expect.poll(() => new URL(page.url()).searchParams.get('heritageRadius')).toBe('600');
 });
 
 test('toont een bronstoring zonder de overige resultaten te verbergen', async ({ page }) => {

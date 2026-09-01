@@ -272,11 +272,11 @@ src/
 - [ ] groenaanleg
 - [ ] linies
 - [x] provenance naar resource-URI's
-- [ ] zichtbare zoekstraalslider voor plekcontext, 25–1000 meter
-- [ ] afzonderlijke zoekstraalslider voor rijksmonumenten, 100–2000 meter
-- [ ] zoekcirkels zichtbaar op de kaart tekenen
-- [ ] straalwaarden in de deelbare URL bewaren
-- [ ] nieuwe datavraag pas na loslaten van de slider uitvoeren
+- [x] zichtbare zoekstraalslider voor plekcontext, 25–1000 meter
+- [x] afzonderlijke zoekstraalslider voor rijksmonumenten, 100–2000 meter
+- [x] zoekcirkels zichtbaar op de kaart tekenen
+- [x] straalwaarden in de deelbare URL bewaren
+- [x] nieuwe datavraag pas na loslaten van de slider uitvoeren
 
 ### 0.4 Foto's en ErfGeo
 
@@ -368,6 +368,7 @@ De app bewaart de gekozen kaarttoestand in de URL. De deelknop gebruikt daardoor
 | `year`, `edition` | gekozen historische kaart | `year=1966&edition=4` |
 | `background` | `brt`, `aerial` of `none` | `background=brt` |
 | `opacity` | doorzichtigheid historische kaart | `opacity=0.72` |
+| `radius`, `heritageRadius` | zoekstraal voor plekcontext en rijksmonumenten in meters | `radius=500&heritageRadius=1200` |
 | `history`, `bag`, `monuments`, `faces`, `world`, `archaeology` | zichtbaarheid per kaartlaag, `1` of `0` | `archaeology=1` |
 
 De browser gebruikt waar beschikbaar het systeemeigen deelvenster. Anders kopieert de app de URL naar het klembord.

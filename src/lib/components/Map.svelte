@@ -7,16 +7,32 @@
   import { ALPHA_START_LOCATION } from '$lib/locations';
   import { optionalNumber } from '$lib/url-params';
 
-  let { context, selectedBuildingId, selectedHistoricalMapId, historicalOpacity = $bindable(), onlocationselect, onbuildingselect }: {
+  let { context, selectedBuildingId, selectedHistoricalMapId, historicalOpacity = $bindable(), radiusMeters, heritageRadiusMeters, searchLon, searchLat, onlocationselect, onbuildingselect }: {
     context: LandscapeContext | null;
     selectedBuildingId: string | null;
     selectedHistoricalMapId: string | null;
     historicalOpacity: number;
+    radiusMeters: number;
+    heritageRadiusMeters: number;
+    searchLon: number;
+    searchLat: number;
     onlocationselect: (lon: number, lat: number) => void;
     onbuildingselect: (buildingId: string) => void;
   } = $props();
 
   const emptyCollection = () => ({ type: 'FeatureCollection' as const, features: [] });
+  function radiusCircle(lon: number, lat: number, radius: number) {
+    const coordinates: [number, number][] = [];
+    const latRadians = lat * Math.PI / 180;
+    for (let index = 0; index <= 64; index++) {
+      const angle = index / 64 * Math.PI * 2;
+      coordinates.push([
+        lon + Math.cos(angle) * radius / (111_320 * Math.cos(latRadians)),
+        lat + Math.sin(angle) * radius / 111_320
+      ]);
+    }
+    return { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, properties: {}, geometry: { type: 'Polygon' as const, coordinates: [coordinates] } }] };
+  }
   let container: HTMLDivElement;
   let map: import('maplibre-gl').Map | null = null;
   let marker: import('maplibre-gl').Marker | null = null;
@@ -98,6 +114,12 @@
     if (context) marker?.setLngLat([context.location.lon, context.location.lat]);
   }
 
+  function syncSearchCircles() {
+    if (!map || !map.isStyleLoaded()) return;
+    (map.getSource('search-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, radiusMeters));
+    (map.getSource('heritage-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, heritageRadiusMeters));
+  }
+
   async function syncHistoricalMap() {
     if (!map || !context || !map.isStyleLoaded()) return;
     const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
@@ -128,6 +150,7 @@
   }
 
   $effect(() => { context; selectedBuildingId; syncData(); });
+  $effect(() => { radiusMeters; heritageRadiusMeters; searchLon; searchLat; syncSearchCircles(); });
   $effect(() => { context; selectedHistoricalMapId; void syncHistoricalMap(); });
   $effect(() => {
     historicalOpacity;
@@ -188,6 +211,12 @@
 
       map.on('load', () => {
         if (!map) return;
+        map.addSource('heritage-radius', { type: 'geojson', data: radiusCircle(searchLon, searchLat, heritageRadiusMeters) });
+        map.addLayer({ id: 'heritage-radius-fill', type: 'fill', source: 'heritage-radius', paint: { 'fill-color': '#7c3aed', 'fill-opacity': 0.035 } });
+        map.addLayer({ id: 'heritage-radius-line', type: 'line', source: 'heritage-radius', paint: { 'line-color': '#7c3aed', 'line-width': 1.5, 'line-dasharray': [3, 2] } });
+        map.addSource('search-radius', { type: 'geojson', data: radiusCircle(searchLon, searchLat, radiusMeters) });
+        map.addLayer({ id: 'search-radius-fill', type: 'fill', source: 'search-radius', paint: { 'fill-color': '#117865', 'fill-opacity': 0.06 } });
+        map.addLayer({ id: 'search-radius-line', type: 'line', source: 'search-radius', paint: { 'line-color': '#117865', 'line-width': 2 } });
         map.addSource('bag-buildings', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'bag-buildings-fill', type: 'fill', source: 'bag-buildings', paint: { 'fill-color': '#117865', 'fill-opacity': 0.3 } });
         map.addLayer({ id: 'bag-buildings-line', type: 'line', source: 'bag-buildings', paint: { 'line-color': '#075a4b', 'line-width': 1.5 } });
