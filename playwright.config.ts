@@ -11,7 +11,8 @@ export default defineConfig({
     trace: 'on-first-retry'
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } }
+    { name: 'chromium', testIgnore: /mobile\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chrome', testMatch: /mobile\.spec\.ts/, use: { ...devices['Pixel 7'] } }
   ],
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1',
