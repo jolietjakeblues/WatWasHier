@@ -3,40 +3,6 @@ import { fetchSourceJson } from '$lib/server/source-fetch';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/erfgeo/sparql';
 type Binding = Record<string, { value?: string }>;
-const MUNICIPAL_HISTORY_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/gemeentegeschiedenis';
-
-export function parseWktArea(wkt: string | undefined): HistoricalName['geometry'] {
-  if (!wkt) return null;
-  const type = wkt.match(/^\s*(MULTIPOLYGON|POLYGON)\s*/i)?.[1]?.toUpperCase();
-  if (!type) return null;
-  const tokens = wkt.slice(wkt.indexOf('(')).match(/\(|\)|,|[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi);
-  if (!tokens) return null;
-  let position = 0;
-  const parseGroup = (): unknown[] => {
-    if (tokens[position++] !== '(') throw new Error('Ongeldige WKT-groep');
-    const values: unknown[] = [];
-    while (position < tokens.length) {
-      if (tokens[position] === '(') values.push(parseGroup());
-      else {
-        const x = Number(tokens[position++]);
-        const y = Number(tokens[position++]);
-        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('Ongeldige WKT-coördinaat');
-        values.push([x, y]);
-      }
-      if (tokens[position] === ',') position++;
-      else if (tokens[position] === ')') { position++; break; }
-    }
-    return values;
-  };
-  try {
-    const coordinates = parseGroup();
-    return type === 'POLYGON'
-      ? { type: 'Polygon', coordinates: coordinates as number[][][] }
-      : { type: 'MultiPolygon', coordinates: coordinates as number[][][][] };
-  } catch {
-    return null;
-  }
-}
 
 export async function getPlaceName(lon: number, lat: number): Promise<string | null> {
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
@@ -74,8 +40,7 @@ export function parseErfGeoNames(bindings: Binding[], currentName: string): Hist
       startYear: Number.isFinite(startYear) ? startYear : null,
       endYear: Number.isFinite(endYear) ? endYear : null,
       matchMethod: 'place-label',
-      confidence: 0.65,
-      geometry: parseWktArea(row.geometry?.value)
+      confidence: 0.65
     });
   }
   return [...names.values()].slice(0, 20);
@@ -84,13 +49,16 @@ export function parseErfGeoNames(bindings: Binding[], currentName: string): Hist
 export async function getErfGeoNames(placeName: string | null): Promise<HistoricalName[]> {
   if (!placeName?.trim()) return [];
   const name = sparqlString(placeName.trim());
-  const query = `SELECT DISTINCT ?place ?label ?begin ?end ?geometry WHERE {
-  GRAPH <${MUNICIPAL_HISTORY_GRAPH}> {
-    ?place <http://purl.org/dc/elements/1.1/title> ?label .
-    FILTER(LCASE(STR(?label)) = LCASE("${name}"))
-    OPTIONAL { ?place <http://schema.org/startDate> ?begin }
+  const query = `SELECT DISTINCT ?graph ?place ?label ?begin ?end WHERE {
+  GRAPH ?graph {
+    ?place ?matchedProperty ?matchedLabel .
+    FILTER(isLiteral(?matchedLabel) && LCASE(STR(?matchedLabel)) = LCASE("${name}"))
+    FILTER(REGEX(STR(?matchedProperty), "label|name|naam|title", "i"))
+    ?place ?labelProperty ?label .
+    FILTER(isLiteral(?label))
+    FILTER(REGEX(STR(?labelProperty), "label|name|naam|title", "i"))
+    OPTIONAL { ?place <http://schema.org/beginDate> ?begin }
     OPTIONAL { ?place <http://schema.org/endDate> ?end }
-    OPTIONAL { ?place <http://www.opengis.net/ont/geosparql#asWKT> ?geometry }
   }
 } LIMIT 50`;
   const endpoint = new URL(ENDPOINT);
