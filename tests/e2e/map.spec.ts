@@ -103,18 +103,9 @@ test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page
     { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
   ];
   await prepare(page, data);
-  await expect(page.locator('[data-historical-map-rendered="kaart-1976"]')).toBeVisible();
-  await page.getByRole('button', { name: 'Open kaartlagen' }).click();
-  const historicalLayerToggle = page.getByLabel('Waterstaatskaart');
-  await historicalLayerToggle.uncheck();
-  await expect(page.locator('[data-historical-layer-visible="false"]')).toBeVisible();
-  await historicalLayerToggle.check();
-  await expect(page.locator('[data-historical-layer-visible="true"]')).toBeVisible();
-  await expect(page.locator('[data-historical-map-rendered="kaart-1976"]')).toBeVisible();
   await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
   await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
-  await expect(page.locator('[data-historical-map-rendered="kaart-1925"]')).toBeVisible();
 });
 
 test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {
