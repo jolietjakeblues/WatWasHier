@@ -40,6 +40,7 @@
   let historicalLayer: import('@allmaps/maplibre').WarpedMapLayer | null = null;
   let rendererMapId: string | null = null;
   let renderedHistoricalMapId = $state<string | null>(null);
+  let historicalLayerVisible = $state(true);
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
@@ -66,7 +67,10 @@
     for (const id of ['rce-faces-fill', 'rce-faces-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showFaces ? 'visible' : 'none');
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
-    if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
+    if (historicalLayer) {
+      historicalLayer.setLayerOptions({ visible: showHistorical }, { duration: 0 });
+      historicalLayerVisible = showHistorical;
+    }
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
     if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
   }
@@ -129,7 +133,6 @@
     renderedHistoricalMapId = nextId;
     if (!selected) return;
     rendererMapId = historicalLayer.addGeoreferencedMap(selected.georeferencedMap, {
-      visible: true,
       opacity: historicalOpacity,
       applyMask: true,
       transformationType: 'thinPlateSpline'
@@ -326,7 +329,7 @@
 </script>
 
 <div class="map-shell">
-  <div class="map" bind:this={container} data-map-ready={mapReady} data-historical-map-rendered={renderedHistoricalMapId ?? undefined}></div>
+  <div class="map" bind:this={container} data-map-ready={mapReady} data-historical-map-rendered={renderedHistoricalMapId ?? undefined} data-historical-layer-visible={historicalLayerVisible}></div>
   <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een pand voor details.</div>
   <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
     <span aria-hidden="true">◇</span> Lagen

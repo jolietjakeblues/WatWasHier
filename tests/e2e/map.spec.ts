@@ -104,6 +104,13 @@ test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page
   ];
   await prepare(page, data);
   await expect(page.locator('[data-historical-map-rendered="kaart-1976"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Open kaartlagen' }).click();
+  const historicalLayerToggle = page.getByLabel('Waterstaatskaart');
+  await historicalLayerToggle.uncheck();
+  await expect(page.locator('[data-historical-layer-visible="false"]')).toBeVisible();
+  await historicalLayerToggle.check();
+  await expect(page.locator('[data-historical-layer-visible="true"]')).toBeVisible();
+  await expect(page.locator('[data-historical-map-rendered="kaart-1976"]')).toBeVisible();
   await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
   await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
