@@ -39,8 +39,8 @@
   let popup: import('maplibre-gl').Popup | null = null;
   let historicalLayer: import('@allmaps/maplibre').WarpedMapLayer | null = null;
   let rendererMapId: string | null = null;
-  let renderedHistoricalMapId = $state<string | null>(null);
-  let historicalLayerVisible = $state(true);
+  let renderedHistoricalMapId: string | null = null;
+  let historicalLoadRequest = 0;
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
@@ -67,10 +67,7 @@
     for (const id of ['rce-faces-fill', 'rce-faces-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showFaces ? 'visible' : 'none');
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
-    if (historicalLayer) {
-      historicalLayer.setLayerOptions({ visible: showHistorical }, { duration: 0 });
-      historicalLayerVisible = showHistorical;
-    }
+    if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
     if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
   }
@@ -123,25 +120,38 @@
     (map.getSource('heritage-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, heritageRadiusMeters));
   }
 
-  function syncHistoricalMap() {
-    if (!historicalLayer || !context) return;
+  async function syncHistoricalMap() {
+    if (!map || !context || !map.isStyleLoaded()) return;
     const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
     const nextId = selected?.id ?? null;
     if (nextId === renderedHistoricalMapId) return;
-    historicalLayer.clear();
+    if (selected && !map.getLayer('bag-buildings-fill')) return;
+    const requestId = ++historicalLoadRequest;
+    historicalLayer?.clear();
     rendererMapId = null;
-    renderedHistoricalMapId = nextId;
-    if (!selected) return;
+    if (!selected) {
+      renderedHistoricalMapId = null;
+      return;
+    }
+    if (!historicalLayer) {
+      const allmaps = await import('@allmaps/maplibre');
+      if (requestId !== historicalLoadRequest || !map) return;
+      historicalLayer = new allmaps.WarpedMapLayer();
+      map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject, 'bag-buildings-fill');
+    }
+    if (requestId !== historicalLoadRequest) return;
     rendererMapId = historicalLayer.addGeoreferencedMap(selected.georeferencedMap, {
+      visible: true,
       opacity: historicalOpacity,
       applyMask: true,
       transformationType: 'thinPlateSpline'
     });
+    renderedHistoricalMapId = nextId;
   }
 
   $effect(() => { context; selectedBuildingId; syncData(); });
   $effect(() => { radiusMeters; heritageRadiusMeters; searchLon; searchLat; syncSearchCircles(); });
-  $effect(() => { context; selectedHistoricalMapId; syncHistoricalMap(); });
+  $effect(() => { context; selectedHistoricalMapId; void syncHistoricalMap(); });
   $effect(() => {
     historicalOpacity;
     if (historicalLayer && rendererMapId) {
@@ -169,7 +179,7 @@
       const requestedLon = optionalNumber(params, 'lon');
       const requestedLat = optionalNumber(params, 'lat');
       const requestedZoom = optionalNumber(params, 'zoom');
-      const [maplibregl, allmaps] = await Promise.all([import('maplibre-gl'), import('@allmaps/maplibre')]);
+      const maplibregl = await import('maplibre-gl');
       if (disposed) return;
       map = new maplibregl.Map({
         container,
@@ -201,8 +211,6 @@
 
       map.on('load', () => {
         if (!map) return;
-        historicalLayer = new allmaps.WarpedMapLayer();
-        map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject);
         map.addSource('heritage-radius', { type: 'geojson', data: radiusCircle(searchLon, searchLat, heritageRadiusMeters) });
         map.addLayer({ id: 'heritage-radius-fill', type: 'fill', source: 'heritage-radius', paint: { 'fill-color': '#7c3aed', 'fill-opacity': 0.035 } });
         map.addLayer({ id: 'heritage-radius-line', type: 'line', source: 'heritage-radius', paint: { 'line-color': '#7c3aed', 'line-width': 1.5, 'line-dasharray': [3, 2] } });
@@ -228,7 +236,7 @@
         map.addLayer({ id: 'archaeology-lines', type: 'line', source: 'rce-archaeology', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': ['match', ['get', 'archaeologyType'], 'ArcheologischTerrein', '#92400e', 'Vondstlocatie', '#991b1b', '#854d0e'], 'line-width': 2, 'line-dasharray': [3, 2] } });
         map.addLayer({ id: 'archaeology-points', type: 'circle', source: 'rce-archaeology', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#dc2626', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         syncData();
-        syncHistoricalMap();
+        void syncHistoricalMap();
         syncLayerVisibility();
         urlReady = true;
         mapReady = true;
@@ -329,7 +337,7 @@
 </script>
 
 <div class="map-shell">
-  <div class="map" bind:this={container} data-map-ready={mapReady} data-historical-map-rendered={renderedHistoricalMapId ?? undefined} data-historical-layer-visible={historicalLayerVisible}></div>
+  <div class="map" bind:this={container} data-map-ready={mapReady}></div>
   <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een pand voor details.</div>
   <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
     <span aria-hidden="true">◇</span> Lagen
