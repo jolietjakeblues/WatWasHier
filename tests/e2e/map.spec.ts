@@ -87,14 +87,27 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {
   const data = context();
+  const georeferencedMap = (id: string) => ({
+    type: 'GeoreferencedMap', id,
+    resource: { id: `https://example.test/iiif/${id}`, type: 'ImageService3', width: 1000, height: 1000 },
+    gcps: [
+      { resource: [0, 0], geo: [6.04, 52.52] },
+      { resource: [1000, 0], geo: [6.10, 52.52] },
+      { resource: [1000, 1000], geo: [6.10, 52.47] },
+      { resource: [0, 1000], geo: [6.04, 52.47] }
+    ],
+    resourceMask: [[0, 0], [1000, 0], [1000, 1000], [0, 1000]]
+  });
   data.historical.maps = [
-    { id: 'kaart-1925', label: 'Waterstaatskaart 1925', yearStart: 1924, yearEnd: 1925, edition: 2, manifestUrl: null, annotationUrl: 'https://example.test/1925', georeferencedMap: {} },
-    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: {} }
+    { id: 'kaart-1925', label: 'Waterstaatskaart 1925', yearStart: 1924, yearEnd: 1925, edition: 2, manifestUrl: null, annotationUrl: 'https://example.test/1925', georeferencedMap: georeferencedMap('kaart-1925') },
+    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
   ];
   await prepare(page, data);
+  await expect(page.locator('[data-historical-map-rendered="kaart-1976"]')).toBeVisible();
   await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
   await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
+  await expect(page.locator('[data-historical-map-rendered="kaart-1925"]')).toBeVisible();
 });
 
 test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {
