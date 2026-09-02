@@ -1,6 +1,7 @@
-import type { Feature, FeatureCollection, Geometry, GeoJsonProperties, Position } from 'geojson';
+import type { Feature, FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 import type { ArchaeologyDetails, ArchaeologyRelation } from '$lib/domain';
 import { fetchSourceJson } from '$lib/server/source-fetch';
+import { parseWkt } from '$lib/server/wkt';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/services/cho/sparql';
 const CEO = 'https://linkeddata.cultureelerfgoed.nl/def/ceo#';
@@ -52,21 +53,6 @@ SELECT DISTINCT ?direction ?object ?class ?name ?cho ?archis ?amount WHERE {
   const counts = new Map<string, number>();
   for (const relation of relations) counts.set(relation.type, (counts.get(relation.type) ?? 0) + 1);
   return { anchorUri, relations, groups: [...counts].map(([type, count]) => ({ type, count })).sort((a, b) => a.type.localeCompare(b.type)) };
-}
-
-function rings(text: string): Position[][] {
-  return text.split(/\)\s*,\s*\(/).map((ring) => ring.replace(/[()]/g, '').split(',').map((pair) => pair.trim().split(/\s+/).slice(0, 2).map(Number)));
-}
-
-function parseWkt(wkt: string): Geometry | null {
-  const clean = wkt.replace(/^<[^>]+>\s*/, '').trim();
-  const body = clean.slice(clean.indexOf('('));
-  if (/^POINT/i.test(clean)) {
-    const coordinates = body.replace(/[()]/g, '').trim().split(/\s+/).slice(0, 2).map(Number);
-    return coordinates.every(Number.isFinite) ? { type: 'Point', coordinates } : null;
-  }
-  if (/^POLYGON/i.test(clean)) return { type: 'Polygon', coordinates: rings(body.slice(1, -1)) };
-  return null;
 }
 
 function kind(classUri: string): string {

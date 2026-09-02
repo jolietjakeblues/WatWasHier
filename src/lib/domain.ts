@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -99,6 +99,14 @@ export interface HistoricalMap {
   georeferencedMap: Record<string, unknown>;
 }
 
+export interface MunicipalityBoundaryPeriod {
+  id: string;
+  label: string;
+  startYear: number | null;
+  endYear: number | null;
+  geometry: Geometry;
+}
+
 export interface LandscapeContext {
   location: LocationSelection;
   current: {
@@ -117,6 +125,10 @@ export interface LandscapeContext {
   archaeology: {
     status: 'not-connected' | 'connected';
     objects: FeatureCollection<Geometry, GeoJsonProperties>;
+  };
+  municipalityHistory: {
+    placeName: string | null;
+    periods: MunicipalityBoundaryPeriod[];
   };
   assertions: Assertion[];
   provenance: Provenance[];

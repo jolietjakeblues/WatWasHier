@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { BuildingFeature, LandscapeContext } from '$lib/domain';
   import { actionForMapClick, buildingIdFromFeature } from '$lib/map-interaction';
-  import { archaeologyPopup, bagPopup, monumentNumber, rcePopup } from '$lib/feature-popup';
+  import { archaeologyPopup, bagPopup, monumentNumber, municipalityHistoryPopup, rcePopup } from '$lib/feature-popup';
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
   import { ALPHA_START_LOCATION } from '$lib/locations';
   import { optionalNumber } from '$lib/url-params';
@@ -33,6 +33,23 @@
     }
     return { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, properties: {}, geometry: { type: 'Polygon' as const, coordinates: [coordinates] } }] };
   }
+  const MUNICIPALITY_HISTORY_COLORS = ['#b91c1c', '#1d4ed8', '#0f766e', '#a16207', '#7c3aed', '#be185d', '#0e7490'];
+  function municipalityHistoryCollection(landscape: LandscapeContext | null) {
+    const periods = landscape?.municipalityHistory.periods ?? [];
+    return {
+      type: 'FeatureCollection' as const,
+      features: periods.map((period, index) => ({
+        type: 'Feature' as const,
+        geometry: period.geometry,
+        properties: {
+          label: period.label,
+          startYear: period.startYear,
+          endYear: period.endYear,
+          color: MUNICIPALITY_HISTORY_COLORS[index % MUNICIPALITY_HISTORY_COLORS.length]
+        }
+      }))
+    };
+  }
   let container: HTMLDivElement;
   let map: import('maplibre-gl').Map | null = null;
   let marker: import('maplibre-gl').Marker | null = null;
@@ -47,6 +64,7 @@
   let showFaces = $state(true);
   let showWorldHeritage = $state(true);
   let showArchaeology = $state(true);
+  let showMunicipalityHistory = $state(true);
   let showHistorical = $state(true);
   let layerPanelOpen = $state(false);
   let background = $state<'brt' | 'aerial' | 'none'>('brt');
@@ -72,6 +90,7 @@
     for (const id of ['rce-faces-fill', 'rce-faces-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showFaces ? 'visible' : 'none');
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
+    for (const id of ['municipality-history-fill', 'municipality-history-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showMunicipalityHistory ? 'visible' : 'none');
     if (showHistorical) syncHistoricalMap();
     else removeHistoricalLayer();
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
@@ -93,6 +112,7 @@
     url.searchParams.set('faces', showFaces ? '1' : '0');
     url.searchParams.set('world', showWorldHeritage ? '1' : '0');
     url.searchParams.set('archaeology', showArchaeology ? '1' : '0');
+    url.searchParams.set('gemeenten', showMunicipalityHistory ? '1' : '0');
     url.searchParams.set('opacity', historicalOpacity.toFixed(2));
     history.replaceState(history.state, '', url);
   }
@@ -114,9 +134,11 @@
     const selection = map.getSource('selected-building') as import('maplibre-gl').GeoJSONSource | undefined;
     const heritage = map.getSource('rce-heritage') as import('maplibre-gl').GeoJSONSource | undefined;
     const archaeology = map.getSource('rce-archaeology') as import('maplibre-gl').GeoJSONSource | undefined;
+    const municipalityHistory = map.getSource('municipality-history') as import('maplibre-gl').GeoJSONSource | undefined;
     buildings?.setData(context?.current.buildings ?? emptyCollection());
     heritage?.setData(context?.heritage.objects ?? emptyCollection());
     archaeology?.setData(context?.archaeology.objects ?? emptyCollection());
+    municipalityHistory?.setData(municipalityHistoryCollection(context));
     const building = findSelectedBuilding();
     selection?.setData(building ? { type: 'FeatureCollection', features: [building] } : emptyCollection());
     if (context) marker?.setLngLat([context.location.lon, context.location.lat]);
@@ -188,7 +210,7 @@
     }
     updateMapUrl();
   });
-  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
+  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
 
   onMount(() => {
     let disposed = false;
@@ -203,6 +225,7 @@
       showFaces = paramEnabled(params, 'faces');
       showWorldHeritage = paramEnabled(params, 'world');
       showArchaeology = paramEnabled(params, 'archaeology');
+      showMunicipalityHistory = paramEnabled(params, 'gemeenten');
       const requestedOpacity = optionalNumber(params, 'opacity');
       if (requestedOpacity !== null && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
       const requestedLon = optionalNumber(params, 'lon');
@@ -247,6 +270,9 @@
         map.addSource('search-radius', { type: 'geojson', data: radiusCircle(searchLon, searchLat, radiusMeters) });
         map.addLayer({ id: 'search-radius-fill', type: 'fill', source: 'search-radius', paint: { 'fill-color': '#117865', 'fill-opacity': 0.06 } });
         map.addLayer({ id: 'search-radius-line', type: 'line', source: 'search-radius', paint: { 'line-color': '#117865', 'line-width': 2 } });
+        map.addSource('municipality-history', { type: 'geojson', data: municipalityHistoryCollection(context) });
+        map.addLayer({ id: 'municipality-history-fill', type: 'fill', source: 'municipality-history', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.05 } });
+        map.addLayer({ id: 'municipality-history-line', type: 'line', source: 'municipality-history', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [4, 2], 'line-opacity': 0.85 } });
         map.addSource('bag-buildings', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'bag-buildings-fill', type: 'fill', source: 'bag-buildings', paint: { 'fill-color': '#117865', 'fill-opacity': 0.3 } });
         map.addLayer({ id: 'bag-buildings-line', type: 'line', source: 'bag-buildings', paint: { 'line-color': '#075a4b', 'line-width': 1.5 } });
@@ -279,6 +305,7 @@
         const heritageHits = map.queryRenderedFeatures(event.point, { layers: heritageLayers });
         const archaeologyHits = map.queryRenderedFeatures(event.point, { layers: ['archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
         const buildingHits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill'] });
+        const municipalityHits = map.queryRenderedFeatures(event.point, { layers: ['municipality-history-line'] });
 
         if (showArchaeology && archaeologyHits[0] && !heritageHits[0]) {
           heritagePanelHtml = null;
@@ -335,6 +362,15 @@
             .addTo(map);
           return;
         }
+        if (showMunicipalityHistory && municipalityHits[0]) {
+          heritagePanelHtml = null;
+          popup?.remove();
+          popup = new maplibregl.Popup({ closeButton: true, maxWidth: '300px', offset: 10 })
+            .setLngLat(event.lngLat)
+            .setHTML(municipalityHistoryPopup(municipalityHits[0].properties))
+            .addTo(map);
+          return;
+        }
         popup?.remove();
         heritagePanelHtml = null;
         popupRequest++;
@@ -345,7 +381,7 @@
 
       map.on('mousemove', (event) => {
         if (!map || !map.getLayer('bag-buildings-fill')) return;
-        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
+        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas', 'municipality-history-line'] });
         map.getCanvas().style.cursor = hits.length ? 'pointer' : 'crosshair';
       });
     })();
@@ -402,6 +438,7 @@
         <label><input type="checkbox" bind:checked={showFaces} /><span class="swatch swatch--faces"></span>Gezichten</label>
         <label><input type="checkbox" bind:checked={showWorldHeritage} /><span class="swatch swatch--world"></span>Werelderfgoed</label>
         <label><input type="checkbox" bind:checked={showArchaeology} /><span class="swatch swatch--archaeology"></span>Archeologie</label>
+        <label><input type="checkbox" bind:checked={showMunicipalityHistory} /><span class="swatch swatch--municipality"></span>Gemeentegeschiedenis</label>
       </fieldset>
     </div>
   {/if}
@@ -434,13 +471,16 @@
   .swatch--faces { background: #e67700; }
   .swatch--world { background: #1565c0; }
   .swatch--archaeology { background: #ca8a04; }
+  .swatch--municipality { background: #1d4ed8; }
   .map :global(.maplibregl-popup-content) { max-height: min(620px, calc(100dvh - 96px)); padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
   .map :global(.maplibregl-popup-close-button) { z-index: 2; padding: 7px 10px; font-size: 20px; color: #344b43; }
   .map-shell :global(.feature-card) { min-width: 245px; max-height: min(615px, calc(100dvh - 101px)); padding: 18px; overflow-y: auto; overscroll-behavior: contain; border-top: 5px solid #117865; color: #18332b; scrollbar-gutter: stable; }
   .map-shell :global(.feature-card--rce) { border-top-color: #7c3aed; }
   .map-shell :global(.feature-card--archaeology) { border-top-color: #ca8a04; }
+  .map-shell :global(.feature-card--municipality) { border-top-color: #1d4ed8; }
   .map-shell :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .map-shell :global(.feature-card--rce .feature-card__type) { color: #6d28d9; }
+  .map-shell :global(.feature-card--municipality .feature-card__type) { color: #1d4ed8; }
   .map-shell :global(.feature-card h3) { margin: 5px 28px 12px 0; font-size: 17px; line-height: 1.25; }
   .map-shell :global(.feature-card dl) { display: grid; gap: 6px; margin: 0 0 13px; }
   .map-shell :global(.feature-card dl div) { display: grid; grid-template-columns: 105px 1fr; gap: 10px; }

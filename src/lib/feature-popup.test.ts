@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, escapeHtml, rcePopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, escapeHtml, municipalityHistoryPopup, rcePopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -36,7 +36,7 @@ describe('feature popups', () => {
     const html = rcePopup({}, {
       ...emptyDetails,
       description,
-      historicalNames: [{ uri: 'https://example.test/geleen', label: 'Geleen', source: 'https://example.test/graph/plaatsen', startYear: null, endYear: null, matchMethod: 'place-label', confidence: 0.65 }]
+      historicalNames: [{ uri: 'https://example.test/geleen', label: 'Geleen', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1850, endYear: 1965, matchMethod: 'place-label', confidence: 0.65 }]
     });
 
     expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('<h4>Beschrijving</h4>'));
@@ -47,24 +47,39 @@ describe('feature popups', () => {
     expect(rcePopup({}, emptyDetails)).toContain('Geen RCE-foto beschikbaar');
   });
 
-  it('vat ErfGeo-records compact samen per bron', () => {
-    const records = Array.from({ length: 6 }, (_, index) => ({
-      uri: 'https://example.test/' + index, label: 'Veere',
-      source: index < 4 ? 'https://example.test/graph/gemeentegeschiedenis' : 'https://example.test/graph/plaatsen',
-      startYear: 1800 + index, endYear: 1801 + index,
-      matchMethod: 'place-label' as const, confidence: 0.65
-    }));
+  it('toont de waarde (naam en periode) van elk ErfGeo-record, niet de brongraaf', () => {
+    const records = [
+      { uri: 'https://example.test/a', label: 'Veere', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1812, endYear: 1966, matchMethod: 'place-label' as const, confidence: 0.65 },
+      { uri: 'https://example.test/b', label: 'Veere', source: 'https://example.test/graph/atlasverstedelijking', startYear: 1812, endYear: 1966, matchMethod: 'place-label' as const, confidence: 0.65 },
+      { uri: 'https://example.test/c', label: 'Veere', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1967, endYear: null, matchMethod: 'place-label' as const, confidence: 0.65 }
+    ];
     const html = rcePopup({}, { ...emptyDetails, historicalNames: records });
 
     expect(html).toContain('Plaatscontext: Veere');
-    expect(html).toContain('6 ErfGeo-records');
-    expect(html).toContain('Gemeentegeschiedenis</a>: 4');
-    expect(html).toContain('Plaatsen</a>: 2');
-    expect(html).not.toContain('1800');
+    expect(html).toContain('1812–1966');
+    expect(html).toContain('1967–heden');
+    expect(html).not.toContain('Gemeentegeschiedenis</a>');
+    expect(html).not.toContain('ErfGeo-records');
+    // dezelfde waarde uit twee grafen (gemeentegeschiedenis + atlasverstedelijking) telt maar één keer
+    expect(html.split('1812–1966')).toHaveLength(2);
+  });
+
+  it('laat de plaatscontext weg wanneer er geen onderscheidende waarde is', () => {
+    const records = [
+      { uri: 'https://example.test/a', label: 'Veere', source: 'https://example.test/graph/plaatsen', startYear: null, endYear: null, matchMethod: 'place-label' as const, confidence: 0.65 }
+    ];
+    const html = rcePopup({}, { ...emptyDetails, historicalNames: records });
+    expect(html).not.toContain('Plaatscontext');
   });
 
   it('groepeert archeologische details per type', () => {
     const html = archaeologyPopup({ archaeologyType: 'Vondstlocatie' }, { anchorUri: 'x', groups: [{ type: 'Vondsten', count: 2 }], relations: [] });
     expect(html).toContain('Vondsten: <strong>2</strong>');
+  });
+
+  it('toont het label van een gemeentegeschiedenisperiode', () => {
+    const html = municipalityHistoryPopup({ label: 'Zwolle (1812–1967)', startYear: 1812, endYear: 1967 });
+    expect(html).toContain('Zwolle (1812–1967)');
+    expect(html).toContain('Gemeentegeschiedenis');
   });
 });
