@@ -26,7 +26,7 @@ describe('RCE-erfgoedfeatures', () => {
     expect(deduplicateHeritageFeatures(features)).toHaveLength(2);
   });
 
-  it('gebruikt voor een beschermd gezicht de polygoon en nooit het punt', () => {
+  it('gebruikt voor een beschermd gezicht de polygoon indien beschikbaar, anders het punt', () => {
     const properties = {
       heritageType: 'face',
       namespace: 'nlps-stadsendorpsgezichten',
@@ -44,6 +44,6 @@ describe('RCE-erfgoedfeatures', () => {
     };
 
     expect(deduplicateHeritageFeatures([point, polygon])).toEqual([polygon]);
-    expect(deduplicateHeritageFeatures([point])).toEqual([]);
+    expect(deduplicateHeritageFeatures([point])).toEqual([point]);
   });
 });

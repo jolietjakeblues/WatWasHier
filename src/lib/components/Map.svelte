@@ -41,6 +41,7 @@
   let HistoricalLayerConstructor: typeof import('@allmaps/maplibre').WarpedMapLayer | null = null;
   let rendererMapId: string | null = null;
   let renderedHistoricalMapId: string | null = null;
+  let historicalRepaintToken = 0;
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
@@ -126,6 +127,23 @@
     historicalLayer = null;
     rendererMapId = null;
     renderedHistoricalMapId = null;
+    historicalRepaintToken++;
+  }
+
+  // WarpedMapLayer fetches the IIIF image info and its tiles asynchronously, and doesn't reliably
+  // schedule a MapLibre repaint itself once that data arrives. Without a nudge, a freshly added
+  // historical map can sit fully loaded-but-invisible until an unrelated map interaction (pan/zoom)
+  // happens to trigger a repaint. Keep asking for repaints for a few seconds so every async step
+  // (image info, then tiles) actually reaches the screen once it resolves.
+  function pumpHistoricalRepaint(durationMs = 4000) {
+    const token = ++historicalRepaintToken;
+    const deadline = performance.now() + durationMs;
+    const step = () => {
+      if (!map || token !== historicalRepaintToken) return;
+      map.triggerRepaint();
+      if (performance.now() < deadline) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   function syncHistoricalMap() {
@@ -146,6 +164,7 @@
       transformationType: 'thinPlateSpline'
     });
     renderedHistoricalMapId = nextId;
+    pumpHistoricalRepaint();
   }
 
   $effect(() => { context; selectedBuildingId; syncData(); });
