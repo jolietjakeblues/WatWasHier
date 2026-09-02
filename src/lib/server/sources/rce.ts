@@ -51,10 +51,7 @@ export function deduplicateHeritageFeatures(
     const existingIsArea = existing?.geometry.type === 'Polygon' || existing?.geometry.type === 'MultiPolygon';
     if (!existing || (isArea && !existingIsArea)) unique.set(key, feature);
   }
-  return [...unique.values()].filter((feature) => {
-    if (feature.properties?.heritageType !== 'face') return true;
-    return feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon';
-  });
+  return [...unique.values()];
 }
 function heritageType(namespace: string): 'monument' | 'face' | 'world-heritage' | 'other' {
   if (namespace.includes('stadsendorpsgezichten')) return 'face';
