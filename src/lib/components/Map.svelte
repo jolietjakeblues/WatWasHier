@@ -62,7 +62,11 @@
     heritagePanel?.scrollTo({ top: 0 });
   }
   function syncLayerVisibility() {
-    if (!map || !map.isStyleLoaded()) return;
+    // See the comment in syncHistoricalMap: map.isStyleLoaded() can briefly report false right
+    // after the initial batch of addSource/addLayer calls in the 'load' handler, which is exactly
+    // where this function is first called from — bailing out on that flicker silently skips
+    // applying showBuildings/showHeritage/etc. (e.g. from a shared URL) to the actual map layers.
+    if (!map || !map.getLayer('bag-buildings-fill')) return;
     for (const id of ['bag-buildings-fill', 'bag-buildings-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showBuildings ? 'visible' : 'none');
     for (const id of ['rce-monuments-fill', 'rce-monuments-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showHeritage ? 'visible' : 'none');
     for (const id of ['rce-faces-fill', 'rce-faces-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showFaces ? 'visible' : 'none');
@@ -103,7 +107,9 @@
   }
 
   function syncData() {
-    if (!map || !map.isStyleLoaded()) return;
+    // Not gated on map.isStyleLoaded() (see syncHistoricalMap) — every source lookup below is
+    // optional-chained, so calling this before sources exist is already a harmless no-op.
+    if (!map) return;
     const buildings = map.getSource('bag-buildings') as import('maplibre-gl').GeoJSONSource | undefined;
     const selection = map.getSource('selected-building') as import('maplibre-gl').GeoJSONSource | undefined;
     const heritage = map.getSource('rce-heritage') as import('maplibre-gl').GeoJSONSource | undefined;
@@ -117,7 +123,7 @@
   }
 
   function syncSearchCircles() {
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map) return;
     (map.getSource('search-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, radiusMeters));
     (map.getSource('heritage-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, heritageRadiusMeters));
   }
@@ -147,7 +153,12 @@
   }
 
   function syncHistoricalMap() {
-    if (!map || !context || !showHistorical || !HistoricalLayerConstructor || !map.isStyleLoaded() || !map.getLayer('bag-buildings-fill')) return;
+    // Note: map.isStyleLoaded() is deliberately not part of this guard. It can briefly report
+    // false right after a batch of addSource/addLayer calls (like the ones in the 'load' handler
+    // just above this function's call site) even though the style is otherwise ready — bailing out
+    // on that flicker silently drops the sync attempt. map.getLayer('bag-buildings-fill') already
+    // proves the style is far enough along, since that layer is only added once 'load' has fired.
+    if (!map || !context || !showHistorical || !HistoricalLayerConstructor || !map.getLayer('bag-buildings-fill')) return;
     const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
     const nextId = selected?.id ?? null;
     if (nextId === renderedHistoricalMapId && historicalLayer) return;

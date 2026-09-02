@@ -4,6 +4,63 @@ import type { Feature } from 'geojson';
 
 const point = { lon: 6.0668, lat: 52.495 };
 
+function georeferencedMap(id: string) {
+  return {
+    type: 'GeoreferencedMap', id,
+    resource: {
+      id: `https://example.test/iiif/${id}`, type: 'ImageService2', width: 1000, height: 1000,
+      tiles: [{ width: 256, height: 256, scaleFactors: [1, 2, 4] }]
+    },
+    gcps: [
+      { resource: [0, 0], geo: [6.04, 52.52] },
+      { resource: [1000, 0], geo: [6.10, 52.52] },
+      { resource: [1000, 1000], geo: [6.10, 52.47] },
+      { resource: [0, 1000], geo: [6.04, 52.47] }
+    ],
+    resourceMask: [[0, 0], [1000, 0], [1000, 1000], [0, 1000]]
+  };
+}
+
+// The IIIF `info.json` is fetched on the main thread, so page.route() can mock it directly.
+// The actual tile image is fetched from inside a dedicated Worker (via comlink), and Playwright's
+// request interception does not reliably observe (and can even hang) worker-issued fetches — so
+// instead of mocking that response, we patch Worker.postMessage before the app loads to detect the
+// comlink RPC call that kicks off a tile fetch. That's a direct, network-independent signal that
+// the render pipeline actually asked for tile pixels, which is exactly the behaviour that used to
+// only happen after an unrelated pan/zoom interaction.
+async function mockIiifInfoAndWatchTileRequests(page: Page) {
+  const infoRequested: string[] = [];
+  await page.route('https://example.test/iiif/**/info.json', (route) => {
+    const url = route.request().url();
+    infoRequested.push(url);
+    return route.fulfill({
+      json: {
+        '@context': 'http://iiif.io/api/image/2/context.json',
+        '@id': url.slice(0, -'/info.json'.length),
+        protocol: 'http://iiif.io/api/image',
+        width: 1000,
+        height: 1000,
+        sizes: [{ width: 250, height: 250 }, { width: 500, height: 500 }],
+        tiles: [{ width: 256, height: 256, scaleFactors: [1, 2, 4] }],
+        profile: ['http://iiif.io/api/image/2/level2.json']
+      }
+    });
+  });
+  await page.addInitScript(() => {
+    (window as unknown as { __tileFetchRequests: unknown[] }).__tileFetchRequests = [];
+    const originalPostMessage = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (message: unknown, ...rest: unknown[]) {
+      const data = message as { path?: unknown[]; argumentList?: unknown[] } | undefined;
+      if (Array.isArray(data?.path) && data.path[0] === 'getImageData') {
+        (window as unknown as { __tileFetchRequests: unknown[] }).__tileFetchRequests.push(data.argumentList);
+      }
+      // @ts-expect-error - forwarding the original call signature
+      return originalPostMessage.call(this, message, ...rest);
+    };
+  });
+  return { infoRequested };
+}
+
 function context(buildings: Feature[] = []): LandscapeContext {
   return {
     location: { ...point, radiusMeters: 250, heritageRadiusMeters: 600, bbox: [6.063, 52.493, 6.071, 52.497] },
@@ -87,25 +144,33 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {
   const data = context();
-  const georeferencedMap = (id: string) => ({
-    type: 'GeoreferencedMap', id,
-    resource: { id: `https://example.test/iiif/${id}`, type: 'ImageService3', width: 1000, height: 1000 },
-    gcps: [
-      { resource: [0, 0], geo: [6.04, 52.52] },
-      { resource: [1000, 0], geo: [6.10, 52.52] },
-      { resource: [1000, 1000], geo: [6.10, 52.47] },
-      { resource: [0, 1000], geo: [6.04, 52.47] }
-    ],
-    resourceMask: [[0, 0], [1000, 0], [1000, 1000], [0, 1000]]
-  });
   data.historical.maps = [
     { id: 'kaart-1925', label: 'Waterstaatskaart 1925', yearStart: 1924, yearEnd: 1925, edition: 2, manifestUrl: null, annotationUrl: 'https://example.test/1925', georeferencedMap: georeferencedMap('kaart-1925') },
     { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
   ];
+  await mockIiifInfoAndWatchTileRequests(page);
   await prepare(page, data);
   await page.getByTitle('Waterstaatskaart 1925, editie 2').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('year')).toBe('1925');
   await expect.poll(() => new URL(page.url()).searchParams.get('edition')).toBe('2');
+});
+
+test('historische kaart vraagt tegelbeelden op zonder dat je hoeft te pannen of te zoomen', async ({ page }) => {
+  const data = context();
+  data.historical.maps = [
+    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
+  ];
+  const { infoRequested } = await mockIiifInfoAndWatchTileRequests(page);
+  await prepare(page, data);
+
+  // De historische kaart wordt automatisch geselecteerd (chooseHistoricalMap), dus dit mag
+  // zonder enige klik, pan of zoom gebeuren — dat is precies waar het eerder op vastliep:
+  // de laag haalde info.json op maar vroeg de tegelafbeelding pas op na een kaartinteractie.
+  await expect.poll(() => infoRequested.length > 0, { timeout: 6000 }).toBe(true);
+  await expect.poll(
+    async () => page.evaluate(() => (window as unknown as { __tileFetchRequests: unknown[] }).__tileFetchRequests.length),
+    { timeout: 6000 }
+  ).toBeGreaterThan(0);
 });
 
 test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {

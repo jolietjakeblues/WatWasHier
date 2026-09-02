@@ -300,7 +300,7 @@ src/
 - [x] PDOK BRT-bronvermelding en CC BY 4.0-attributie in de kaart opnemen
 - [x] herstelknop tonen wanneer een externe databron tijdelijk uitvalt
 - [x] historische kaartselectie en bronherstel met Playwright testen
-- [ ] Allmaps pas laden wanneer een historische kaart beschikbaar is zonder de historische laagvolgorde te breken
+- [ ] Allmaps-laag betrouwbaar laten renderen bij eerste weergave i.p.v. afhankelijk van een pan/zoom-interactie (repaint-pump toegevoegd, nog niet sluitend geverifieerd tegen de beta van `@allmaps/maplibre`)
 
 ### 0.5 Semantiek
 
