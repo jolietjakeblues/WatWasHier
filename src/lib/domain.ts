@@ -20,6 +20,7 @@ export interface HistoricalName {
   endYear: number | null;
   matchMethod: 'place-label';
   confidence: number;
+  geometry: Geometry | null;
 }
 
 export interface HeritageDetails {

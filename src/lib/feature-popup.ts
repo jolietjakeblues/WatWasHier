@@ -41,22 +41,12 @@ export function rcePopup(properties: GeoJsonProperties, details?: HeritageDetail
       : '';
   const placeRecords = details?.historicalNames ?? [];
   const placeLabel = placeRecords.find((name) => !name.label.toLowerCase().startsWith('gemeente '))?.label ?? placeRecords[0]?.label;
-  const sourceGroups = new Map<string, { url: string; count: number }>();
-  for (const record of placeRecords) {
-    if (!record.source) continue;
-    const key = record.source.split('/').pop() ?? record.source;
-    const group = sourceGroups.get(key);
-    if (group) group.count++;
-    else sourceGroups.set(key, { url: record.source, count: 1 });
-  }
-  const sourceLabels: Record<string, string> = {
-    atlasverstedelijking: 'Atlas van de verstedelijking',
-    gemeentegeschiedenis: 'Gemeentegeschiedenis',
-    poorterboeken: 'Poorterboeken',
-    plaatsen: 'Plaatsen'
-  };
+  const periods = placeRecords.filter((record) => record.geometry).map((record) => {
+    const period = record.startYear && record.endYear ? `${record.startYear}–${record.endYear}` : record.startYear ? `vanaf ${record.startYear}` : record.endYear ? `tot ${record.endYear}` : 'periode onbekend';
+    return `<li><strong>${escapeHtml(record.label)}</strong>: ${escapeHtml(period)}</li>`;
+  }).join('');
   const placeContext = placeLabel
-    ? `<details class="feature-card__historical"><summary>Plaatscontext: ${escapeHtml(placeLabel)} <span>${placeRecords.length} ErfGeo-records</span></summary><p>Automatisch gekoppeld op woonplaatsnaam, ${Math.round(Math.max(...placeRecords.map((name) => name.confidence)) * 100)}% zekerheid. Dit zijn plaatsrecords, geen gegevens over het monument zelf.</p><ul>${[...sourceGroups].map(([source, group]) => `<li><a href="${escapeHtml(group.url)}" target="_blank" rel="noreferrer">${escapeHtml(sourceLabels[source] ?? source)}</a>: ${group.count}</li>`).join('')}</ul></details>`
+    ? periods ? `<details class="feature-card__historical"><summary>Historische gemeentegrenzen: ${escapeHtml(placeLabel)} <span>${placeRecords.filter((record) => record.geometry).length} perioden op de kaart</span></summary><ul>${periods}</ul></details>` : ''
     : '';  const description = details?.description?.trim() ?? '';
   const descriptionExcerpt = description.length > 360 ? `${description.slice(0, 357).trimEnd()}…` : description;
   const descriptionHtml = description

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { BuildingFeature, LandscapeContext } from '$lib/domain';
+  import type { BuildingFeature, HistoricalName, LandscapeContext } from '$lib/domain';
   import { actionForMapClick, buildingIdFromFeature } from '$lib/map-interaction';
   import { archaeologyPopup, bagPopup, monumentNumber, rcePopup } from '$lib/feature-popup';
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
@@ -40,7 +40,6 @@
   let historicalLayer: import('@allmaps/maplibre').WarpedMapLayer | null = null;
   let rendererMapId: string | null = null;
   let renderedHistoricalMapId: string | null = null;
-  let historicalLoadRequest = 0;
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
@@ -60,6 +59,18 @@
     await tick();
     heritagePanel?.scrollTo({ top: 0 });
   }
+  function showMunicipalHistory(records: HistoricalName[] = []) {
+    if (!map || !map.isStyleLoaded()) return;
+    const source = map.getSource('municipal-history') as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData({
+      type: 'FeatureCollection',
+      features: records.flatMap((record) => record.geometry ? [{
+        type: 'Feature' as const,
+        geometry: record.geometry,
+        properties: { label: record.label, startYear: record.startYear, endYear: record.endYear }
+      }] : [])
+    });
+  }
   function syncLayerVisibility() {
     if (!map || !map.isStyleLoaded()) return;
     for (const id of ['bag-buildings-fill', 'bag-buildings-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showBuildings ? 'visible' : 'none');
@@ -67,7 +78,14 @@
     if (map.getLayer('rce-faces-fill')) map.setLayoutProperty('rce-faces-fill', 'visibility', showFaces ? 'visible' : 'none');
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
-    if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
+    if (historicalLayer) {
+      if (showHistorical) syncHistoricalMap();
+      else {
+        historicalLayer.clear();
+        rendererMapId = null;
+        renderedHistoricalMapId = null;
+      }
+    }
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
     if (map.getLayer('aerial')) map.setLayoutProperty('aerial', 'visibility', background === 'aerial' ? 'visible' : 'none');
   }
@@ -120,38 +138,26 @@
     (map.getSource('heritage-radius') as import('maplibre-gl').GeoJSONSource | undefined)?.setData(radiusCircle(searchLon, searchLat, heritageRadiusMeters));
   }
 
-  async function syncHistoricalMap() {
-    if (!map || !context || !map.isStyleLoaded()) return;
+  function syncHistoricalMap() {
+    if (!historicalLayer || !context || !showHistorical) return;
     const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
     const nextId = selected?.id ?? null;
     if (nextId === renderedHistoricalMapId) return;
-    if (selected && !map.getLayer('bag-buildings-fill')) return;
-    const requestId = ++historicalLoadRequest;
-    historicalLayer?.clear();
+    historicalLayer.clear();
     rendererMapId = null;
-    if (!selected) {
-      renderedHistoricalMapId = null;
-      return;
-    }
-    if (!historicalLayer) {
-      const allmaps = await import('@allmaps/maplibre');
-      if (requestId !== historicalLoadRequest || !map) return;
-      historicalLayer = new allmaps.WarpedMapLayer();
-      map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject, 'bag-buildings-fill');
-    }
-    if (requestId !== historicalLoadRequest) return;
+    renderedHistoricalMapId = nextId;
+    if (!selected) return;
     rendererMapId = historicalLayer.addGeoreferencedMap(selected.georeferencedMap, {
       visible: true,
       opacity: historicalOpacity,
       applyMask: true,
       transformationType: 'thinPlateSpline'
     });
-    renderedHistoricalMapId = nextId;
   }
 
   $effect(() => { context; selectedBuildingId; syncData(); });
   $effect(() => { radiusMeters; heritageRadiusMeters; searchLon; searchLat; syncSearchCircles(); });
-  $effect(() => { context; selectedHistoricalMapId; void syncHistoricalMap(); });
+  $effect(() => { context; selectedHistoricalMapId; syncHistoricalMap(); });
   $effect(() => {
     historicalOpacity;
     if (historicalLayer && rendererMapId) {
@@ -179,7 +185,7 @@
       const requestedLon = optionalNumber(params, 'lon');
       const requestedLat = optionalNumber(params, 'lat');
       const requestedZoom = optionalNumber(params, 'zoom');
-      const maplibregl = await import('maplibre-gl');
+      const [maplibregl, allmaps] = await Promise.all([import('maplibre-gl'), import('@allmaps/maplibre')]);
       if (disposed) return;
       map = new maplibregl.Map({
         container,
@@ -211,6 +217,8 @@
 
       map.on('load', () => {
         if (!map) return;
+        historicalLayer = new allmaps.WarpedMapLayer();
+        map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject);
         map.addSource('heritage-radius', { type: 'geojson', data: radiusCircle(searchLon, searchLat, heritageRadiusMeters) });
         map.addLayer({ id: 'heritage-radius-fill', type: 'fill', source: 'heritage-radius', paint: { 'fill-color': '#7c3aed', 'fill-opacity': 0.035 } });
         map.addLayer({ id: 'heritage-radius-line', type: 'line', source: 'heritage-radius', paint: { 'line-color': '#7c3aed', 'line-width': 1.5, 'line-dasharray': [3, 2] } });
@@ -230,12 +238,15 @@
         map.addLayer({ id: 'rce-faces-fill', type: 'fill', source: 'rce-heritage', filter: typeFilter('Polygon', 'face'), paint: { 'fill-color': '#e67700', 'fill-opacity': 0.18, 'fill-outline-color': '#b45309' } });
         map.addLayer({ id: 'rce-world-fill', type: 'fill', source: 'rce-heritage', filter: typeFilter('Polygon', 'world-heritage'), paint: { 'fill-color': '#1565c0', 'fill-opacity': 0.18, 'fill-outline-color': '#0d47a1' } });
         map.addLayer({ id: 'rce-world-points', type: 'circle', source: 'rce-heritage', filter: typeFilter('Point', 'world-heritage'), paint: { 'circle-radius': 8, 'circle-color': '#1565c0', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+        map.addSource('municipal-history', { type: 'geojson', data: emptyCollection() });
+        map.addLayer({ id: 'municipal-history-fill', type: 'fill', source: 'municipal-history', paint: { 'fill-color': '#0f766e', 'fill-opacity': 0.08 } });
+        map.addLayer({ id: 'municipal-history-line', type: 'line', source: 'municipal-history', paint: { 'line-color': '#0f766e', 'line-width': 3, 'line-dasharray': [2, 1] } });
         map.addSource('rce-archaeology', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'archaeology-areas', type: 'fill', source: 'rce-archaeology', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['match', ['get', 'archaeologyType'], 'ArcheologischTerrein', '#b45309', 'Vondstlocatie', '#dc2626', '#ca8a04'], 'fill-opacity': 0.16 } });
         map.addLayer({ id: 'archaeology-lines', type: 'line', source: 'rce-archaeology', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': ['match', ['get', 'archaeologyType'], 'ArcheologischTerrein', '#92400e', 'Vondstlocatie', '#991b1b', '#854d0e'], 'line-width': 2, 'line-dasharray': [3, 2] } });
         map.addLayer({ id: 'archaeology-points', type: 'circle', source: 'rce-archaeology', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#dc2626', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         syncData();
-        void syncHistoricalMap();
+        syncHistoricalMap();
         syncLayerVisibility();
         urlReady = true;
         mapReady = true;
@@ -251,6 +262,7 @@
 
         if (showArchaeology && archaeologyHits[0] && !heritageHits[0]) {
           heritagePanelHtml = null;
+          showMunicipalHistory();
           const requestId = ++popupRequest;
           const properties = archaeologyHits[0].properties;
           const resource = properties?.resource ? String(properties.resource) : null;
@@ -275,6 +287,7 @@
           const choNumber = properties?.localid ? String(properties.localid).replace(/\.0+$/, '') : null;
           popup?.remove();
           popup = null;
+          showMunicipalHistory();
           void showHeritagePanel(rcePopup(properties, null, Boolean(number)));
           if (number) {
             const detailParams = new URLSearchParams({
@@ -286,7 +299,10 @@
               if (!response.ok) throw new Error('RCE-details niet beschikbaar');
               return response.json() as Promise<HeritageDetails>;
             }).then((details) => {
-              if (requestId === popupRequest) void showHeritagePanel(rcePopup(properties, details));
+              if (requestId === popupRequest) {
+                showMunicipalHistory(details.historicalNames);
+                void showHeritagePanel(rcePopup(properties, details));
+              }
             }).catch(() => {
               if (requestId === popupRequest) void showHeritagePanel(rcePopup(properties));
             });
@@ -296,6 +312,7 @@
         const action = actionForMapClick(buildingHits, event.lngLat.lng, event.lngLat.lat);
         if (action.type === 'select-building') {
           heritagePanelHtml = null;
+          showMunicipalHistory();
           onbuildingselect(action.buildingId);
           popup?.remove();
           popup = new maplibregl.Popup({ closeButton: true, maxWidth: '340px', offset: 10 })
@@ -306,6 +323,7 @@
         }
         popup?.remove();
         heritagePanelHtml = null;
+        showMunicipalHistory();
         popupRequest++;
         map.setCenter([action.lon, action.lat]);
         marker?.setLngLat([action.lon, action.lat]);
@@ -343,7 +361,7 @@
   </button>
   {#if heritagePanelHtml}
     <aside class="heritage-panel" bind:this={heritagePanel} aria-label="Details van het geselecteerde monument" aria-live="polite">
-      <button class="heritage-panel__close" type="button" aria-label="Sluit monumentdetails" onclick={() => { heritagePanelHtml = null; popupRequest++; }}>×</button>
+      <button class="heritage-panel__close" type="button" aria-label="Sluit monumentdetails" onclick={() => { heritagePanelHtml = null; showMunicipalHistory(); popupRequest++; }}>×</button>
       {@html heritagePanelHtml}
     </aside>
   {/if}

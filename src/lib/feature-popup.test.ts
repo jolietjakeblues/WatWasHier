@@ -6,6 +6,7 @@ const emptyDetails = {
   bagObjectUrl: null, resourceUrl: null, description: null, originalFunction: null,
   legalStatus: null, images: [], historicalNames: []
 };
+const municipality = { type: 'Polygon' as const, coordinates: [[[6, 52], [7, 52], [6, 52]]] };
 
 describe('feature popups', () => {
   it('escapet bronwaarden voordat ze als HTML worden getoond', () => {
@@ -20,15 +21,15 @@ describe('feature popups', () => {
     expect(rcePopup({ ci_citation: 'https://example.test/monument' })).toContain('Open monumentregister');
   });
 
-  it('plaatst foto en monumentvelden vóór de ErfGeo-plaatscontext', () => {
+  it('plaatst foto en monumentvelden vóór de historische gemeentegrenzen', () => {
     const html = rcePopup({}, {
       ...emptyDetails,
       images: [{ uri: 'foto', title: null, description: null, thumbnailUrl: 'https://example.test/foto.jpg', sourceUrl: null, licenseUrl: null, graph: 'graph' }],
-      historicalNames: [{ uri: 'https://example.test/zwolle', label: 'Zwolle', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1812, endYear: 1967, matchMethod: 'place-label', confidence: 0.65 }]
+      historicalNames: [{ uri: 'https://example.test/zwolle', label: 'Zwolle', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1812, endYear: 1967, matchMethod: 'place-label', confidence: 0.65, geometry: municipality }]
     });
 
     expect(html.indexOf('feature-card__image')).toBeLessThan(html.indexOf('RCE-identificatie'));
-    expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('Plaatscontext: Zwolle'));
+    expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('Historische gemeentegrenzen: Zwolle'));
   });
 
   it('zet kerngegevens vóór een ingeklapte lange beschrijving en plaatscontext', () => {
@@ -36,31 +37,35 @@ describe('feature popups', () => {
     const html = rcePopup({}, {
       ...emptyDetails,
       description,
-      historicalNames: [{ uri: 'https://example.test/geleen', label: 'Geleen', source: 'https://example.test/graph/plaatsen', startYear: null, endYear: null, matchMethod: 'place-label', confidence: 0.65 }]
+      historicalNames: [{ uri: 'https://example.test/geleen', label: 'Geleen', source: null, startYear: null, endYear: null, matchMethod: 'place-label', confidence: 0.65, geometry: municipality }]
     });
 
     expect(html.indexOf('RCE-identificatie')).toBeLessThan(html.indexOf('<h4>Beschrijving</h4>'));
     expect(html).toContain('Lees volledige beschrijving');
-    expect(html.indexOf('<h4>Beschrijving</h4>')).toBeLessThan(html.indexOf('Plaatscontext: Geleen'));
+    expect(html.indexOf('<h4>Beschrijving</h4>')).toBeLessThan(html.indexOf('Historische gemeentegrenzen: Geleen'));
   });
   it('meldt duidelijk wanneer de RCE geen foto levert', () => {
     expect(rcePopup({}, emptyDetails)).toContain('Geen RCE-foto beschikbaar');
   });
 
-  it('vat ErfGeo-records compact samen per bron', () => {
-    const records = Array.from({ length: 6 }, (_, index) => ({
+  it('toont concrete perioden en geen graphnamen', () => {
+    const records = Array.from({ length: 2 }, (_, index) => ({
       uri: 'https://example.test/' + index, label: 'Veere',
-      source: index < 4 ? 'https://example.test/graph/gemeentegeschiedenis' : 'https://example.test/graph/plaatsen',
+      source: 'https://example.test/graph/gemeentegeschiedenis',
       startYear: 1800 + index, endYear: 1801 + index,
-      matchMethod: 'place-label' as const, confidence: 0.65
+      matchMethod: 'place-label' as const, confidence: 0.65, geometry: municipality
     }));
     const html = rcePopup({}, { ...emptyDetails, historicalNames: records });
 
-    expect(html).toContain('Plaatscontext: Veere');
-    expect(html).toContain('6 ErfGeo-records');
-    expect(html).toContain('Gemeentegeschiedenis</a>: 4');
-    expect(html).toContain('Plaatsen</a>: 2');
-    expect(html).not.toContain('1800');
+    expect(html).toContain('Historische gemeentegrenzen: Veere');
+    expect(html).toContain('1800–1801');
+    expect(html).not.toContain('Gemeentegeschiedenis</a>');
+  });
+
+  it('laat plaatscontext zonder geometrieën weg', () => {
+    const html = rcePopup({}, { ...emptyDetails, historicalNames: [{ uri: 'x', label: 'Zwolle', source: null, startYear: null, endYear: null, matchMethod: 'place-label', confidence: 0.65, geometry: null }] });
+    expect(html).not.toContain('Plaatscontext');
+    expect(html).not.toContain('Historische gemeentegrenzen');
   });
 
   it('groepeert archeologische details per type', () => {
