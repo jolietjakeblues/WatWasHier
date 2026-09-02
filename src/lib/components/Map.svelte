@@ -64,7 +64,7 @@
     if (!map || !map.isStyleLoaded()) return;
     for (const id of ['bag-buildings-fill', 'bag-buildings-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showBuildings ? 'visible' : 'none');
     for (const id of ['rce-monuments-fill', 'rce-monuments-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showHeritage ? 'visible' : 'none');
-    for (const id of ['rce-faces-fill', 'rce-faces-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showFaces ? 'visible' : 'none');
+    if (map.getLayer('rce-faces-fill')) map.setLayoutProperty('rce-faces-fill', 'visibility', showFaces ? 'visible' : 'none');
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
     if (historicalLayer && rendererMapId) historicalLayer.setMapOptions(rendererMapId, { visible: showHistorical }, { duration: 0 });
@@ -228,7 +228,6 @@
         map.addLayer({ id: 'rce-monuments-fill', type: 'fill', source: 'rce-heritage', filter: typeFilter('Polygon', 'monument'), paint: { 'fill-color': '#7c3aed', 'fill-opacity': 0.24, 'fill-outline-color': '#5b21b6' } });
         map.addLayer({ id: 'rce-monuments-points', type: 'circle', source: 'rce-heritage', filter: typeFilter('Point', 'monument'), paint: { 'circle-radius': 6, 'circle-color': '#7c3aed', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         map.addLayer({ id: 'rce-faces-fill', type: 'fill', source: 'rce-heritage', filter: typeFilter('Polygon', 'face'), paint: { 'fill-color': '#e67700', 'fill-opacity': 0.18, 'fill-outline-color': '#b45309' } });
-        map.addLayer({ id: 'rce-faces-points', type: 'circle', source: 'rce-heritage', filter: typeFilter('Point', 'face'), paint: { 'circle-radius': 7, 'circle-color': '#e67700', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         map.addLayer({ id: 'rce-world-fill', type: 'fill', source: 'rce-heritage', filter: typeFilter('Polygon', 'world-heritage'), paint: { 'fill-color': '#1565c0', 'fill-opacity': 0.18, 'fill-outline-color': '#0d47a1' } });
         map.addLayer({ id: 'rce-world-points', type: 'circle', source: 'rce-heritage', filter: typeFilter('Point', 'world-heritage'), paint: { 'circle-radius': 8, 'circle-color': '#1565c0', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
         map.addSource('rce-archaeology', { type: 'geojson', data: emptyCollection() });
@@ -245,7 +244,7 @@
 
       map.on('click', (event) => {
         if (!map || !map.getLayer('bag-buildings-fill')) return;
-        const heritageLayers = ['rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill'];
+        const heritageLayers = ['rce-monuments-points', 'rce-monuments-fill', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill'];
         const heritageHits = map.queryRenderedFeatures(event.point, { layers: heritageLayers });
         const archaeologyHits = map.queryRenderedFeatures(event.point, { layers: ['archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
         const buildingHits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill'] });
@@ -315,7 +314,7 @@
 
       map.on('mousemove', (event) => {
         if (!map || !map.getLayer('bag-buildings-fill')) return;
-        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
+        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
         map.getCanvas().style.cursor = hits.length ? 'pointer' : 'crosshair';
       });
     })();
