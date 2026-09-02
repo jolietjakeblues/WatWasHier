@@ -8,6 +8,7 @@ test.beforeEach(async ({ page }) => {
     historical: { collectionTitle: null, collectionUrl: 'https://example.test', itemCount: 0, maps: [] },
     heritage: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
+    municipalityHistory: { placeName: null, periods: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

@@ -68,6 +68,7 @@ function context(buildings: Feature[] = []): LandscapeContext {
     historical: { collectionTitle: 'Watertijdreis', collectionUrl: 'https://example.test/collection', itemCount: 1, maps: [] },
     heritage: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
+    municipalityHistory: { placeName: null, periods: [] },
     assertions: [{ id: 'bag', type: 'source_fact', statement: `PDOK leverde ${buildings.length} BAG-panden.`, sourceIds: ['source-pdok-bag'] }],
     provenance: [{ id: 'source-pdok-bag', source: 'pdok-bag', title: 'BAG', url: 'https://example.test/bag', retrievedAt: '2026-08-31T12:00:00Z' }],
     sourceStatus: [
@@ -132,14 +133,42 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
   await expect(page.getByLabel('BAG-panden')).not.toBeChecked();
+  await expect(page.getByLabel('Gemeentegeschiedenis')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
   await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
   await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
+});
+
+test('gemeentegeschiedenis toont een klikbare historische gemeentegrens', async ({ page }) => {
+  const data = context();
+  data.municipalityHistory = {
+    placeName: 'Zwolle',
+    periods: [
+      {
+        id: 'https://example.test/gemeentegeschiedenis/zwolle-1812',
+        label: 'Zwolle (1812–1967)',
+        startYear: 1812,
+        endYear: 1967,
+        // Rand op exact de lengtegraad van het kaartcentrum (point.lon = 6.0668), zodat een klik
+        // op het midden van het kaartcanvas — ongeacht precieze zoom/projectie — op deze lijn valt.
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[6.0, 52.3], [point.lon, 52.3], [point.lon, 52.7], [6.0, 52.7], [6.0, 52.3]]]
+        }
+      }
+    ]
+  };
+  await prepare(page, data);
+  const canvas = page.locator('.maplibregl-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Kaartcanvas heeft geen afmetingen');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator('.feature-card--municipality')).toContainText('Zwolle (1812–1967)');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {

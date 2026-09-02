@@ -3,6 +3,7 @@ import { getBagBuildings } from './sources/pdok';
 import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
+import { getMunicipalityHistoryForLocation } from './sources/erfgeo';
 import { bboxAroundPoint } from '$lib/geo';
 import { SourceFetchError } from './source-fetch';
 
@@ -40,11 +41,12 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
-    getArchaeology(location.bbox)
+    getArchaeology(location.bbox),
+    getMunicipalityHistoryForLocation(location.lon, location.lat)
   ]);
 
   const buildings =
@@ -76,6 +78,10 @@ export async function buildLandscapeContext(
   if (heritageResult.status === 'rejected') warnings.push(sourceWarning('RCE-erfgoed', heritageResult.reason));
   const archaeology = archaeologyResult.status === 'fulfilled' ? archaeologyResult.value : { type: 'FeatureCollection' as const, features: [] };
   if (archaeologyResult.status === 'rejected') warnings.push(sourceWarning('RCE-archeologie', archaeologyResult.reason));
+  const municipalityHistory = municipalityHistoryResult.status === 'fulfilled'
+    ? municipalityHistoryResult.value
+    : { placeName: null, periods: [] };
+  if (municipalityHistoryResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo gemeentegeschiedenis', municipalityHistoryResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -113,12 +119,24 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (municipalityHistory.periods.length > 0) {
+    provenance.push({
+      id: 'source-erfgeo-gemeentegeschiedenis',
+      source: 'erfgeo-gemeentegeschiedenis',
+      title: 'RCE ErfGeo - Gemeentegeschiedenis',
+      url: 'https://linkeddata.cultureelerfgoed.nl/graph/gemeentegeschiedenis',
+      retrievedAt: now(),
+      license: 'CC0'
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
     statusFor('watertijdreis', 'Watertijdreis', historyResult),
     statusFor('rce', 'RCE-erfgoed', heritageResult),
-    statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult)
+    statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult),
+    statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult)
   ];
 
   return {
@@ -138,6 +156,7 @@ export async function buildLandscapeContext(
       status: archaeologyResult.status === 'fulfilled' ? 'connected' : 'not-connected',
       objects: archaeology
     },
+    municipalityHistory,
     assertions: [
       {
         id: 'rce-object-count',

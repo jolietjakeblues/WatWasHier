@@ -1,7 +1,9 @@
-import type { HistoricalName } from '$lib/domain';
+import type { HistoricalName, MunicipalityBoundaryPeriod } from '$lib/domain';
 import { fetchSourceJson } from '$lib/server/source-fetch';
+import { parseWkt } from '$lib/server/wkt';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/erfgeo/sparql';
+const GEMEENTEGESCHIEDENIS_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/gemeentegeschiedenis';
 type Binding = Record<string, { value?: string }>;
 
 export async function getPlaceName(lon: number, lat: number): Promise<string | null> {
@@ -57,7 +59,7 @@ export async function getErfGeoNames(placeName: string | null): Promise<Historic
     ?place ?labelProperty ?label .
     FILTER(isLiteral(?label))
     FILTER(REGEX(STR(?labelProperty), "label|name|naam|title", "i"))
-    OPTIONAL { ?place <http://schema.org/beginDate> ?begin }
+    OPTIONAL { ?place <http://schema.org/beginDate>|<http://schema.org/startDate> ?begin }
     OPTIONAL { ?place <http://schema.org/endDate> ?end }
   }
 } LIMIT 50`;
@@ -65,4 +67,57 @@ export async function getErfGeoNames(placeName: string | null): Promise<Historic
   endpoint.searchParams.set('query', query);
   const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo', headers: { accept: 'application/sparql-results+json' } });
   return parseErfGeoNames(result.results?.bindings ?? [], placeName);
+}
+
+function formatPeriodLabel(placeName: string, startYear: number | null, endYear: number | null): string {
+  if (startYear === null && endYear === null) return placeName;
+  return `${placeName} (${startYear ?? '?'}–${endYear ?? 'heden'})`;
+}
+
+export function parseMunicipalityHistory(bindings: Binding[], placeName: string): MunicipalityBoundaryPeriod[] {
+  const periods = new Map<string, MunicipalityBoundaryPeriod>();
+  for (const row of bindings) {
+    const uri = row.place?.value;
+    const wkt = row.wkt?.value;
+    if (!uri || !wkt || periods.has(uri)) continue;
+    const geometry = parseWkt(wkt);
+    if (!geometry) continue;
+    const startYear = row.begin?.value ? Number.parseInt(row.begin.value, 10) : null;
+    const endYear = row.end?.value ? Number.parseInt(row.end.value, 10) : null;
+    periods.set(uri, {
+      id: uri,
+      label: formatPeriodLabel(placeName, Number.isFinite(startYear) ? startYear : null, Number.isFinite(endYear) ? endYear : null),
+      startYear: Number.isFinite(startYear) ? startYear : null,
+      endYear: Number.isFinite(endYear) ? endYear : null,
+      geometry
+    });
+  }
+  return [...periods.values()].sort((a, b) => (a.startYear ?? -Infinity) - (b.startYear ?? -Infinity));
+}
+
+export async function getMunicipalityHistory(placeName: string | null): Promise<MunicipalityBoundaryPeriod[]> {
+  if (!placeName?.trim()) return [];
+  const name = sparqlString(placeName.trim());
+  const query = `SELECT ?place ?begin ?end ?wkt WHERE {
+  GRAPH <${GEMEENTEGESCHIEDENIS_GRAPH}> {
+    ?place <http://purl.org/dc/elements/1.1/title> ?title .
+    FILTER(LCASE(STR(?title)) = LCASE("${name}"))
+    ?place <http://www.opengis.net/ont/geosparql#asWKT> ?wkt .
+    OPTIONAL { ?place <http://schema.org/startDate> ?begin }
+    OPTIONAL { ?place <http://schema.org/endDate> ?end }
+  }
+} ORDER BY ?begin LIMIT 30`;
+  const endpoint = new URL(ENDPOINT);
+  endpoint.searchParams.set('query', query);
+  const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo gemeentegeschiedenis', headers: { accept: 'application/sparql-results+json' } });
+  return parseMunicipalityHistory(result.results?.bindings ?? [], placeName);
+}
+
+export async function getMunicipalityHistoryForLocation(
+  lon: number,
+  lat: number
+): Promise<{ placeName: string | null; periods: MunicipalityBoundaryPeriod[] }> {
+  const placeName = await getPlaceName(lon, lat);
+  const periods = await getMunicipalityHistory(placeName);
+  return { placeName, periods };
 }
