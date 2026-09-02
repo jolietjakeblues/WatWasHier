@@ -46,9 +46,15 @@ export function deduplicateHeritageFeatures(
     const properties = feature.properties ?? {};
     const citation = properties.ci_citation ? String(properties.ci_citation) : null;
     const key = citation ?? `${properties.namespace ?? ''}|${properties.localid ?? feature.id ?? ''}`;
-    if (!unique.has(key)) unique.set(key, feature);
+    const existing = unique.get(key);
+    const isArea = feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon';
+    const existingIsArea = existing?.geometry.type === 'Polygon' || existing?.geometry.type === 'MultiPolygon';
+    if (!existing || (isArea && !existingIsArea)) unique.set(key, feature);
   }
-  return [...unique.values()];
+  return [...unique.values()].filter((feature) => {
+    if (feature.properties?.heritageType !== 'face') return true;
+    return feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon';
+  });
 }
 function heritageType(namespace: string): 'monument' | 'face' | 'world-heritage' | 'other' {
   if (namespace.includes('stadsendorpsgezichten')) return 'face';
