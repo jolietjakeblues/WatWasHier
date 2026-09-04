@@ -9,6 +9,7 @@ test.beforeEach(async ({ page }) => {
     heritage: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     municipalityHistory: { placeName: null, periods: [] },
+    minuutplans: { status: 'connected', sheets: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

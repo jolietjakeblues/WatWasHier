@@ -4,6 +4,7 @@ import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
 import { getMunicipalityHistoryForLocation } from './sources/erfgeo';
+import { getMinuutplanSheets } from './sources/minuutplans';
 import { bboxAroundPoint } from '$lib/geo';
 import { SourceFetchError } from './source-fetch';
 
@@ -41,12 +42,13 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
     getArchaeology(location.bbox),
-    getMunicipalityHistoryForLocation(location.lon, location.lat)
+    getMunicipalityHistoryForLocation(location.lon, location.lat),
+    getMinuutplanSheets(location.bbox)
   ]);
 
   const buildings =
@@ -82,6 +84,8 @@ export async function buildLandscapeContext(
     ? municipalityHistoryResult.value
     : { placeName: null, periods: [] };
   if (municipalityHistoryResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo gemeentegeschiedenis', municipalityHistoryResult.reason));
+  const minuutplanSheets = minuutplansResult.status === 'fulfilled' ? minuutplansResult.value : [];
+  if (minuutplansResult.status === 'rejected') warnings.push(sourceWarning('RCE kadastrale minuutplans', minuutplansResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -130,13 +134,24 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (minuutplanSheets.length > 0) {
+    provenance.push({
+      id: 'source-rce-minuutplans',
+      source: 'rce-minuutplans',
+      title: 'RCE - Kadastrale minuutplans 1811-1832 (bladgrenzen)',
+      url: 'https://services.rce.geovoorziening.nl/misc/wfs',
+      retrievedAt: now()
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
     statusFor('watertijdreis', 'Watertijdreis', historyResult),
     statusFor('rce', 'RCE-erfgoed', heritageResult),
     statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult),
-    statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult)
+    statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult),
+    statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult)
   ];
 
   return {
@@ -157,6 +172,10 @@ export async function buildLandscapeContext(
       objects: archaeology
     },
     municipalityHistory,
+    minuutplans: {
+      status: minuutplansResult.status === 'fulfilled' ? 'connected' : 'not-connected',
+      sheets: minuutplanSheets
+    },
     assertions: [
       {
         id: 'rce-object-count',

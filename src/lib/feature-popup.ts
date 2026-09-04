@@ -24,6 +24,12 @@ export function municipalityHistoryPopup(properties: GeoJsonProperties): string 
   return `<div class="feature-card feature-card--municipality"><span class="feature-card__type">Gemeentegeschiedenis</span><h3>${escapeHtml(label)}</h3><p class="feature-card__description">Historische gemeentegrens volgens RCE ErfGeo.</p></div>`;
 }
 
+export function minuutplanPopup(properties: GeoJsonProperties): string {
+  const p = properties ?? {};
+  const url = p.detailUrl ? String(p.detailUrl) : null;
+  return `<div class="feature-card feature-card--minuutplan"><span class="feature-card__type">Kadastrale minuutplan</span><h3>Sectie ${escapeHtml(p.section ?? '?')}, blad ${escapeHtml(p.sheet ?? '?')}</h3><dl>${row('Gemeente (1832)', p.municipality)}${row('Provincie', p.province)}${row('Kaartcode', p.code)}</dl><p class="feature-card__description">Kadastrale minuutplans, 1811&ndash;1832.</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Bekijk de kaart bij RCE</a>` : ''}</div>`;
+}
+
 export function archaeologyPopup(properties: GeoJsonProperties, details?: ArchaeologyDetails | null, loading = false): string {
   const p = properties ?? {};
   const labels: Record<string, string> = { ArcheologischTerrein: 'Archeologisch terrein', ArcheologischOnderzoeksgebied: 'Archeologisch onderzoeksgebied', Vondstlocatie: 'Vondstlocatie' };

@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -107,6 +107,17 @@ export interface MunicipalityBoundaryPeriod {
   geometry: Geometry;
 }
 
+export interface MinuutplanSheet {
+  id: string;
+  code: string;
+  province: string | null;
+  municipality: string | null;
+  section: string | null;
+  sheet: string | null;
+  detailUrl: string | null;
+  geometry: Geometry;
+}
+
 export interface LandscapeContext {
   location: LocationSelection;
   current: {
@@ -129,6 +140,10 @@ export interface LandscapeContext {
   municipalityHistory: {
     placeName: string | null;
     periods: MunicipalityBoundaryPeriod[];
+  };
+  minuutplans: {
+    status: 'not-connected' | 'connected';
+    sheets: MinuutplanSheet[];
   };
   assertions: Assertion[];
   provenance: Provenance[];

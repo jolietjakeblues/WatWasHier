@@ -128,6 +128,7 @@
         <div class="overview-tile"><span>{context.heritage.status === 'connected' ? context.heritage.objects.features.length : '–'}</span><small>Erfgoed</small></div>
         <div class="overview-tile"><span>{context.archaeology.status === 'connected' ? context.archaeology.objects.features.length : '–'}</span><small>Archeologie</small></div>
         <div class="overview-tile"><span>{context.municipalityHistory.periods.length}</span><small>Gemeente&shy;geschiedenis</small></div>
+        <div class="overview-tile"><span>{context.minuutplans.status === 'connected' ? context.minuutplans.sheets.length : '–'}</span><small>Minuut&shy;plans</small></div>
         <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
       </div>
     </section>
@@ -259,6 +260,24 @@
           </ul>
         {:else}
           <p class="muted">Voor deze locatie is geen gemeentegeschiedenis gevonden.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><span>Kadastrale minuutplans</span><small>{context.minuutplans.status === 'connected' ? `${context.minuutplans.sheets.length} bladen` : 'niet bereikbaar'}</small></summary>
+        {#if context.minuutplans.status === 'connected'}
+          {#if context.minuutplans.sheets.length}
+            <p class="muted">Bladgrenzen uit de kadastrale minuutplans (1811–1832) staan als contouren op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.minuutplans.sheets as sheet}
+                <li>Sectie {sheet.section}, blad {sheet.sheet}{sheet.municipality ? ` — ${sheet.municipality}` : ''}{#if sheet.detailUrl}{' '}<a class="data-link" href={sheet.detailUrl} target="_blank" rel="noreferrer">bekijk</a>{/if}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie is geen kadastraal minuutplan gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De minuutplan-bron kon niet worden bereikt.</p>
         {/if}
       </details>
 

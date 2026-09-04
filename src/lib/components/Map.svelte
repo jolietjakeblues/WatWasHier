@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { BuildingFeature, LandscapeContext } from '$lib/domain';
   import { actionForMapClick, buildingIdFromFeature } from '$lib/map-interaction';
-  import { archaeologyPopup, bagPopup, monumentNumber, municipalityHistoryPopup, rcePopup } from '$lib/feature-popup';
+  import { archaeologyPopup, bagPopup, minuutplanPopup, monumentNumber, municipalityHistoryPopup, rcePopup } from '$lib/feature-popup';
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
   import { ALPHA_START_LOCATION } from '$lib/locations';
   import { optionalNumber } from '$lib/url-params';
@@ -50,7 +50,26 @@
       }))
     };
   }
+  function minuutplansCollection(landscape: LandscapeContext | null) {
+    const sheets = landscape?.minuutplans.sheets ?? [];
+    return {
+      type: 'FeatureCollection' as const,
+      features: sheets.map((sheet) => ({
+        type: 'Feature' as const,
+        geometry: sheet.geometry,
+        properties: {
+          code: sheet.code,
+          province: sheet.province,
+          municipality: sheet.municipality,
+          section: sheet.section,
+          sheet: sheet.sheet,
+          detailUrl: sheet.detailUrl
+        }
+      }))
+    };
+  }
   let container: HTMLDivElement;
+  let compareContainer = $state<HTMLDivElement>();
   let map: import('maplibre-gl').Map | null = null;
   let marker: import('maplibre-gl').Marker | null = null;
   let popup: import('maplibre-gl').Popup | null = null;
@@ -59,12 +78,20 @@
   let rendererMapId: string | null = null;
   let renderedHistoricalMapId: string | null = null;
   let historicalRepaintToken = 0;
+  let compareMap: import('maplibre-gl').Map | null = null;
+  let compareHistoricalLayer: import('@allmaps/maplibre').WarpedMapLayer | null = null;
+  let compareRendererMapId: string | null = null;
+  let compareRepaintToken = 0;
+  let dividerDragging = false;
+  let compareMode = $state(false);
+  let comparePosition = $state(50);
   let showBuildings = $state(true);
   let showHeritage = $state(true);
   let showFaces = $state(true);
   let showWorldHeritage = $state(true);
   let showArchaeology = $state(true);
   let showMunicipalityHistory = $state(true);
+  let showMinuutplans = $state(true);
   let showHistorical = $state(true);
   let layerPanelOpen = $state(false);
   let background = $state<'brt' | 'aerial' | 'none'>('brt');
@@ -91,6 +118,7 @@
     for (const id of ['rce-world-fill', 'rce-world-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showWorldHeritage ? 'visible' : 'none');
     for (const id of ['archaeology-areas', 'archaeology-lines', 'archaeology-points']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showArchaeology ? 'visible' : 'none');
     for (const id of ['municipality-history-fill', 'municipality-history-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showMunicipalityHistory ? 'visible' : 'none');
+    for (const id of ['minuutplans-fill', 'minuutplans-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showMinuutplans ? 'visible' : 'none');
     if (showHistorical) syncHistoricalMap();
     else removeHistoricalLayer();
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
@@ -113,6 +141,7 @@
     url.searchParams.set('world', showWorldHeritage ? '1' : '0');
     url.searchParams.set('archaeology', showArchaeology ? '1' : '0');
     url.searchParams.set('gemeenten', showMunicipalityHistory ? '1' : '0');
+    url.searchParams.set('minuutplans', showMinuutplans ? '1' : '0');
     url.searchParams.set('opacity', historicalOpacity.toFixed(2));
     history.replaceState(history.state, '', url);
   }
@@ -135,10 +164,12 @@
     const heritage = map.getSource('rce-heritage') as import('maplibre-gl').GeoJSONSource | undefined;
     const archaeology = map.getSource('rce-archaeology') as import('maplibre-gl').GeoJSONSource | undefined;
     const municipalityHistory = map.getSource('municipality-history') as import('maplibre-gl').GeoJSONSource | undefined;
+    const minuutplans = map.getSource('minuutplans') as import('maplibre-gl').GeoJSONSource | undefined;
     buildings?.setData(context?.current.buildings ?? emptyCollection());
     heritage?.setData(context?.heritage.objects ?? emptyCollection());
     archaeology?.setData(context?.archaeology.objects ?? emptyCollection());
     municipalityHistory?.setData(municipalityHistoryCollection(context));
+    minuutplans?.setData(minuutplansCollection(context));
     const building = findSelectedBuilding();
     selection?.setData(building ? { type: 'FeatureCollection', features: [building] } : emptyCollection());
     if (context) marker?.setLngLat([context.location.lon, context.location.lat]);
@@ -200,17 +231,98 @@
     pumpHistoricalRepaint();
   }
 
+  function removeCompareHistoricalLayer() {
+    if (compareMap && compareHistoricalLayer && compareMap.getLayer(compareHistoricalLayer.id)) compareMap.removeLayer(compareHistoricalLayer.id);
+    compareHistoricalLayer = null;
+    compareRendererMapId = null;
+  }
+
+  function pumpCompareRepaint(durationMs = 4000) {
+    const token = ++compareRepaintToken;
+    const deadline = performance.now() + durationMs;
+    const step = () => {
+      if (!compareMap || token !== compareRepaintToken) return;
+      compareMap.triggerRepaint();
+      if (performance.now() < deadline) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function syncCompareHistoricalLayer() {
+    if (!compareMap || !context || !HistoricalLayerConstructor) return;
+    const selected = context.historical.maps.find((item) => item.id === selectedHistoricalMapId);
+    removeCompareHistoricalLayer();
+    if (!selected) return;
+    compareHistoricalLayer = new HistoricalLayerConstructor({ layerId: 'waterstaatskaart-compare' });
+    compareMap.addLayer(compareHistoricalLayer as unknown as import('maplibre-gl').AddLayerObject);
+    compareRendererMapId = compareHistoricalLayer.addGeoreferencedMap(selected.georeferencedMap, {
+      visible: true,
+      opacity: 1,
+      applyMask: true,
+      transformationType: 'thinPlateSpline'
+    });
+    pumpCompareRepaint();
+  }
+
+  function destroyCompareMap() {
+    compareMap?.remove();
+    compareMap = null;
+    compareHistoricalLayer = null;
+    compareRendererMapId = null;
+    compareRepaintToken++;
+  }
+
+  async function createCompareMap() {
+    if (!map || compareMap) return;
+    const maplibregl = await import('maplibre-gl');
+    if (!compareMode || !compareContainer || !map) return;
+    compareMap = new maplibregl.Map({
+      container: compareContainer,
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch(),
+      style: { version: 8, sources: {}, layers: [] },
+      attributionControl: false,
+      interactive: false
+    });
+    compareMap.on('load', () => syncCompareHistoricalLayer());
+  }
+
+  function onDividerPointerDown(event: PointerEvent) {
+    event.preventDefault();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    dividerDragging = true;
+  }
+  function onDividerPointerMove(event: PointerEvent) {
+    if (!dividerDragging || !container) return;
+    const rect = container.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+    comparePosition = Math.min(95, Math.max(5, ratio * 100));
+  }
+  function onDividerPointerUp(event: PointerEvent) {
+    dividerDragging = false;
+    (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+  }
+
   $effect(() => { context; selectedBuildingId; syncData(); });
   $effect(() => { radiusMeters; heritageRadiusMeters; searchLon; searchLat; syncSearchCircles(); });
   $effect(() => { context; selectedHistoricalMapId; syncHistoricalMap(); });
   $effect(() => {
     historicalOpacity;
+    compareMode;
     if (historicalLayer && rendererMapId) {
-      historicalLayer.setMapOptions(rendererMapId, { opacity: historicalOpacity }, { duration: 0 });
+      historicalLayer.setMapOptions(rendererMapId, { opacity: historicalOpacity, visible: !compareMode }, { duration: 0 });
+      pumpHistoricalRepaint(500);
     }
     updateMapUrl();
   });
-  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
+  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showMinuutplans; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
+  $effect(() => {
+    if (compareMode) void createCompareMap();
+    else destroyCompareMap();
+  });
+  $effect(() => { context; selectedHistoricalMapId; if (compareMode && compareMap?.isStyleLoaded()) syncCompareHistoricalLayer(); });
 
   onMount(() => {
     let disposed = false;
@@ -226,6 +338,7 @@
       showWorldHeritage = paramEnabled(params, 'world');
       showArchaeology = paramEnabled(params, 'archaeology');
       showMunicipalityHistory = paramEnabled(params, 'gemeenten');
+      showMinuutplans = paramEnabled(params, 'minuutplans');
       const requestedOpacity = optionalNumber(params, 'opacity');
       if (requestedOpacity !== null && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
       const requestedLon = optionalNumber(params, 'lon');
@@ -261,6 +374,10 @@
         url.searchParams.set('zoom', map.getZoom().toFixed(2));
         history.replaceState(history.state, '', url);
       });
+      map.on('move', () => {
+        if (!map || !compareMap) return;
+        compareMap.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+      });
 
       map.on('load', () => {
         if (!map) return;
@@ -273,6 +390,9 @@
         map.addSource('municipality-history', { type: 'geojson', data: municipalityHistoryCollection(context) });
         map.addLayer({ id: 'municipality-history-fill', type: 'fill', source: 'municipality-history', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.05 } });
         map.addLayer({ id: 'municipality-history-line', type: 'line', source: 'municipality-history', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [4, 2], 'line-opacity': 0.85 } });
+        map.addSource('minuutplans', { type: 'geojson', data: minuutplansCollection(context) });
+        map.addLayer({ id: 'minuutplans-fill', type: 'fill', source: 'minuutplans', paint: { 'fill-color': '#78350f', 'fill-opacity': 0.04 } });
+        map.addLayer({ id: 'minuutplans-line', type: 'line', source: 'minuutplans', paint: { 'line-color': '#78350f', 'line-width': 1.5, 'line-dasharray': [1, 2], 'line-opacity': 0.8 } });
         map.addSource('bag-buildings', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'bag-buildings-fill', type: 'fill', source: 'bag-buildings', paint: { 'fill-color': '#117865', 'fill-opacity': 0.3 } });
         map.addLayer({ id: 'bag-buildings-line', type: 'line', source: 'bag-buildings', paint: { 'line-color': '#075a4b', 'line-width': 1.5 } });
@@ -306,6 +426,7 @@
         const archaeologyHits = map.queryRenderedFeatures(event.point, { layers: ['archaeology-points', 'archaeology-lines', 'archaeology-areas'] });
         const buildingHits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill'] });
         const municipalityHits = map.queryRenderedFeatures(event.point, { layers: ['municipality-history-line'] });
+        const minuutplanHits = map.queryRenderedFeatures(event.point, { layers: ['minuutplans-line'] });
 
         if (showArchaeology && archaeologyHits[0] && !heritageHits[0]) {
           heritagePanelHtml = null;
@@ -371,6 +492,15 @@
             .addTo(map);
           return;
         }
+        if (showMinuutplans && minuutplanHits[0]) {
+          heritagePanelHtml = null;
+          popup?.remove();
+          popup = new maplibregl.Popup({ closeButton: true, maxWidth: '300px', offset: 10 })
+            .setLngLat(event.lngLat)
+            .setHTML(minuutplanPopup(minuutplanHits[0].properties))
+            .addTo(map);
+          return;
+        }
         popup?.remove();
         heritagePanelHtml = null;
         popupRequest++;
@@ -381,7 +511,7 @@
 
       map.on('mousemove', (event) => {
         if (!map || !map.getLayer('bag-buildings-fill')) return;
-        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas', 'municipality-history-line'] });
+        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas', 'municipality-history-line', 'minuutplans-line'] });
         map.getCanvas().style.cursor = hits.length ? 'pointer' : 'crosshair';
       });
     })();
@@ -391,6 +521,7 @@
       marker?.remove();
       popup?.remove();
       map?.remove();
+      compareMap?.remove();
       map = null;
       marker = null;
       popup = null;
@@ -398,6 +529,10 @@
       HistoricalLayerConstructor = null;
       rendererMapId = null;
       renderedHistoricalMapId = null;
+      compareMap = null;
+      compareHistoricalLayer = null;
+      compareRendererMapId = null;
+      compareMode = false;
       mapReady = false;
     };
   });
@@ -405,7 +540,33 @@
 
 <div class="map-shell">
   <div class="map" bind:this={container} data-map-ready={mapReady}></div>
-  <div class="hint">Klik op de kaart voor een gebied. Klik daarna op een pand voor details.</div>
+  {#if compareMode}
+    <div class="compare-clip" style:clip-path="inset(0 {100 - comparePosition}% 0 0)">
+      <div class="compare-map" bind:this={compareContainer}></div>
+    </div>
+    <div
+      class="compare-divider"
+      style:left="{comparePosition}%"
+      role="slider"
+      aria-label="Vergelijk oud en nieuw"
+      aria-valuemin="5"
+      aria-valuemax="95"
+      aria-valuenow={Math.round(comparePosition)}
+      tabindex="0"
+      onpointerdown={onDividerPointerDown}
+      onpointermove={onDividerPointerMove}
+      onpointerup={onDividerPointerUp}
+      onkeydown={(event) => {
+        if (event.key === 'ArrowLeft') comparePosition = Math.max(5, comparePosition - 2);
+        if (event.key === 'ArrowRight') comparePosition = Math.min(95, comparePosition + 2);
+      }}
+    >
+      <span class="compare-divider__handle" aria-hidden="true">⇔</span>
+    </div>
+    <div class="compare-label compare-label--old">Toen</div>
+    <div class="compare-label compare-label--new">Nu</div>
+  {/if}
+  <div class="hint">{compareMode ? 'Sleep de lijn om de Waterstaatskaart met nu te vergelijken.' : 'Klik op de kaart voor een gebied. Klik daarna op een pand voor details.'}</div>
   <button class="layer-button" class:active={layerPanelOpen} type="button" aria-label="Open kaartlagen" aria-expanded={layerPanelOpen} onclick={() => layerPanelOpen = !layerPanelOpen}>
     <span aria-hidden="true">◇</span> Lagen
   </button>
@@ -428,8 +589,9 @@
         <label><input type="checkbox" bind:checked={showHistorical} /><span class="swatch swatch--history"></span>Waterstaatskaart</label>
         <label class="opacity-control">
           <span>Doorzichtigheid: {Math.round(historicalOpacity * 100)}%</span>
-          <input type="range" min="0" max="1" step="0.05" bind:value={historicalOpacity} disabled={!showHistorical} />
+          <input type="range" min="0" max="1" step="0.05" bind:value={historicalOpacity} disabled={!showHistorical || compareMode} />
         </label>
+        <label><input type="checkbox" bind:checked={compareMode} disabled={!showHistorical || !selectedHistoricalMapId} /><span class="swatch swatch--compare"></span>Schuifvergelijking oud/nieuw</label>
       </fieldset>
       <fieldset>
         <legend>Objecten</legend>
@@ -439,6 +601,7 @@
         <label><input type="checkbox" bind:checked={showWorldHeritage} /><span class="swatch swatch--world"></span>Werelderfgoed</label>
         <label><input type="checkbox" bind:checked={showArchaeology} /><span class="swatch swatch--archaeology"></span>Archeologie</label>
         <label><input type="checkbox" bind:checked={showMunicipalityHistory} /><span class="swatch swatch--municipality"></span>Gemeentegeschiedenis</label>
+        <label><input type="checkbox" bind:checked={showMinuutplans} /><span class="swatch swatch--minuutplans"></span>Kadastrale minuutplans</label>
       </fieldset>
     </div>
   {/if}
@@ -447,6 +610,14 @@
 <style>
   .map-shell { position: relative; min-height: 580px; height: 100%; overflow: hidden; border-radius: 16px; background: #dde3df; }
   .map { position: absolute; inset: 0; }
+  .compare-clip { position: absolute; z-index: 1; inset: 0; overflow: hidden; pointer-events: none; }
+  .compare-map { position: absolute; inset: 0; }
+  .compare-divider { position: absolute; z-index: 3; top: 0; bottom: 0; width: 44px; margin-left: -22px; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; }
+  .compare-divider::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; background: rgba(255,255,255,.92); box-shadow: 0 0 0 1px rgba(20,33,29,.18); }
+  .compare-divider__handle { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #18332b; font-size: 15px; box-shadow: 0 3px 12px rgba(20,33,29,.3); }
+  .compare-label { position: absolute; z-index: 2; padding: 5px 11px; border-radius: 20px; background: rgba(24,51,43,.82); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .03em; pointer-events: none; }
+  .compare-label--old { left: 140px; bottom: 16px; }
+  .compare-label--new { top: 16px; right: 60px; }
   .heritage-panel { position: absolute; z-index: 5; top: 16px; right: 58px; width: min(390px, calc(100% - 90px)); max-height: calc(100% - 32px); overflow-y: auto; overscroll-behavior: contain; border-radius: 12px; background: #fff; box-shadow: 0 12px 38px rgba(10, 31, 24, 0.28); scrollbar-gutter: stable; }
   .heritage-panel__close { position: sticky; z-index: 2; top: 8px; float: right; width: 32px; height: 32px; margin: 8px 8px -40px 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.94); color: #344b43; font: 700 22px/1 sans-serif; cursor: pointer; box-shadow: 0 1px 5px rgba(10,31,24,.16); }
   .heritage-panel :global(.feature-card) { max-height: none; overflow: visible; }
@@ -472,15 +643,19 @@
   .swatch--world { background: #1565c0; }
   .swatch--archaeology { background: #ca8a04; }
   .swatch--municipality { background: #1d4ed8; }
+  .swatch--minuutplans { background: #78350f; }
+  .swatch--compare { border-radius: 50%; background: #18332b; }
   .map :global(.maplibregl-popup-content) { max-height: min(620px, calc(100dvh - 96px)); padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
   .map :global(.maplibregl-popup-close-button) { z-index: 2; padding: 7px 10px; font-size: 20px; color: #344b43; }
   .map-shell :global(.feature-card) { min-width: 245px; max-height: min(615px, calc(100dvh - 101px)); padding: 18px; overflow-y: auto; overscroll-behavior: contain; border-top: 5px solid #117865; color: #18332b; scrollbar-gutter: stable; }
   .map-shell :global(.feature-card--rce) { border-top-color: #7c3aed; }
   .map-shell :global(.feature-card--archaeology) { border-top-color: #ca8a04; }
   .map-shell :global(.feature-card--municipality) { border-top-color: #1d4ed8; }
+  .map-shell :global(.feature-card--minuutplan) { border-top-color: #78350f; }
   .map-shell :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .map-shell :global(.feature-card--rce .feature-card__type) { color: #6d28d9; }
   .map-shell :global(.feature-card--municipality .feature-card__type) { color: #1d4ed8; }
+  .map-shell :global(.feature-card--minuutplan .feature-card__type) { color: #78350f; }
   .map-shell :global(.feature-card h3) { margin: 5px 28px 12px 0; font-size: 17px; line-height: 1.25; }
   .map-shell :global(.feature-card dl) { display: grid; gap: 6px; margin: 0 0 13px; }
   .map-shell :global(.feature-card dl div) { display: grid; grid-template-columns: 105px 1fr; gap: 10px; }
