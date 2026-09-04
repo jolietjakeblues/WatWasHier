@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -126,6 +126,30 @@ export interface Toponym {
   lat: number;
 }
 
+export interface DisappearedVillage {
+  id: string;
+  label: string;
+  date: string | null;
+  source: string | null;
+  lon: number;
+  lat: number;
+}
+
+export interface DefenceLine {
+  id: string;
+  label: string;
+  period: string | null;
+  geometry: Geometry;
+}
+
+export interface HistoricGarden {
+  id: string;
+  label: string;
+  category: string | null;
+  areaSquareMeters: number | null;
+  geometry: Geometry;
+}
+
 export interface Perceel {
   id: string;
   gemeente: string;
@@ -169,6 +193,18 @@ export interface LandscapeContext {
   percelen: {
     status: 'not-connected' | 'connected';
     items: Perceel[];
+  };
+  disappearedVillages: {
+    status: 'not-connected' | 'connected';
+    items: DisappearedVillage[];
+  };
+  defenceLines: {
+    status: 'not-connected' | 'connected';
+    items: DefenceLine[];
+  };
+  historicGardens: {
+    status: 'not-connected' | 'connected';
+    items: HistoricGarden[];
   };
   assertions: Assertion[];
   provenance: Provenance[];

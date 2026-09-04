@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseErfGeoNames, parseMunicipalityHistory, parseToponymBindings } from './erfgeo';
+import { parseDisappearedVillageBindings, parseErfGeoNames, parseMunicipalityHistory, parseToponymBindings } from './erfgeo';
 
 describe('ErfGeo-namen', () => {
   it('laat de huidige naam weg en markeert alternatieven als mogelijke koppeling', () => {
@@ -35,7 +35,7 @@ describe('gemeentegeschiedenis', () => {
   it('slaat records zonder (geldige) geometrie over', () => {
     const result = parseMunicipalityHistory([
       { place: { value: 'https://example.test/zonder-geometrie' }, begin: { value: '1900' } },
-      { place: { value: 'https://example.test/kapotte-wkt' }, begin: { value: '1900' }, wkt: { value: 'LINESTRING(0 0, 1 1)' } }
+      { place: { value: 'https://example.test/kapotte-wkt' }, begin: { value: '1900' }, wkt: { value: 'TRIANGLE(0 0, 1 1, 2 2)' } }
     ], 'Nergenshuizen');
     expect(result).toHaveLength(0);
   });
@@ -63,5 +63,26 @@ describe('kloekecodes', () => {
       { s: { value: 'https://example.test/kloekecodes/4' }, title: { value: 'Zonder coördinaat' }, id: { value: 'F096a' } }
     ]);
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('verdwenen dorpen', () => {
+  it('parseert naam, jaartal en bronvermelding, en dedupliceert op URI', () => {
+    const result = parseDisappearedVillageBindings([
+      { s: { value: 'https://example.test/verdwenendorpen/1' }, title: { value: 'Westkerke' }, date: { value: '1375' }, source: { value: 'Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152' }, lon: { value: '3.777' }, lat: { value: '51.528' } },
+      { s: { value: 'https://example.test/verdwenendorpen/1' }, title: { value: 'Westkerke' }, date: { value: '1375' }, source: { value: 'Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152' }, lon: { value: '3.777' }, lat: { value: '51.528' } }
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ label: 'Westkerke', date: '1375', source: 'Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152', lon: 3.777, lat: 51.528 });
+  });
+
+  it('slaat records zonder naam of geldige coördinaten over, en accepteert een ontbrekend jaartal', () => {
+    const result = parseDisappearedVillageBindings([
+      { s: { value: 'https://example.test/verdwenendorpen/2' }, lon: { value: '3.7' }, lat: { value: '51.5' } },
+      { s: { value: 'https://example.test/verdwenendorpen/3' }, title: { value: 'Zonder coördinaat' } },
+      { s: { value: 'https://example.test/verdwenendorpen/4' }, title: { value: 'Onbekend jaar' }, lon: { value: '3.7' }, lat: { value: '51.5' } }
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ label: 'Onbekend jaar', date: null });
   });
 });

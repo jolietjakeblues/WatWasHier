@@ -137,6 +137,9 @@
         <div class="overview-tile"><span>{context.minuutplans.status === 'connected' ? context.minuutplans.sheets.length : '–'}</span><small>Minuut&shy;plans</small></div>
         <div class="overview-tile"><span>{context.toponyms.status === 'connected' ? context.toponyms.items.length : '–'}</span><small>Plaats&shy;namen</small></div>
         <div class="overview-tile"><span>{context.percelen.status === 'connected' ? context.percelen.items.length : '–'}</span><small>Percelen</small></div>
+        <div class="overview-tile"><span>{context.disappearedVillages.status === 'connected' ? context.disappearedVillages.items.length : '–'}</span><small>Verdwenen&shy;dorpen</small></div>
+        <div class="overview-tile"><span>{context.defenceLines.status === 'connected' ? context.defenceLines.items.length : '–'}</span><small>Linies</small></div>
+        <div class="overview-tile"><span>{context.historicGardens.status === 'connected' ? context.historicGardens.items.length : '–'}</span><small>Groenaanleg</small></div>
         <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
       </div>
     </section>
@@ -322,6 +325,60 @@
           {/if}
         {:else}
           <p class="muted">De KKG-percelenbron kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Verdwenen dorpen</span><small>{context.disappearedVillages.status === 'connected' ? `${context.disappearedVillages.items.length} dorpen` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.disappearedVillages.status === 'connected'}
+          {#if context.disappearedVillages.items.length}
+            <p class="muted">Verdwenen dorpen en gehuchten, naar Bert Stulp's boekenreeks "Verdwenen Dorpen", staan als grijze punten op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.disappearedVillages.items as village}
+                <li>{village.label}{village.date ? ` — laatst genoemd ${village.date}` : ''}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie zijn geen verdwenen dorpen gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De bron voor verdwenen dorpen kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Historische linies</span><small>{context.defenceLines.status === 'connected' ? `${context.defenceLines.items.length} linies` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.defenceLines.status === 'connected'}
+          {#if context.defenceLines.items.length}
+            <p class="muted">Historische verdedigingslinies staan als groene stippellijnen op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.defenceLines.items as line}
+                <li>{line.label}{line.period ? ` — ${line.period}` : ''}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie zijn geen historische linies gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De bron voor historische linies kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Historische groenaanleg</span><small>{context.historicGardens.status === 'connected' ? `${context.historicGardens.items.length} aanleggen` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.historicGardens.status === 'connected'}
+          {#if context.historicGardens.items.length}
+            <p class="muted">Historische tuin- en landschapsarchitectuur staat als groene vlakken op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.historicGardens.items as garden}
+                <li>{garden.label}{garden.category ? ` — ${garden.category}` : ''}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie is geen historische groenaanleg gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De bron voor historische groenaanleg kon niet worden bereikt.</p>
         {/if}
       </details>
 

@@ -36,7 +36,22 @@ describe('parseWkt', () => {
     expect((geometry as { coordinates: number[][][][] }).coordinates).toHaveLength(2);
   });
 
+  it('parseert een LINESTRING', () => {
+    expect(parseWkt('LINESTRING(6.1 52.5, 6.2 52.6)')).toEqual({
+      type: 'LineString',
+      coordinates: [[6.1, 52.5], [6.2, 52.6]]
+    });
+  });
+
+  it('parseert een MULTILINESTRING met meerdere lijnen', () => {
+    const wkt = 'MULTILINESTRING((0 0, 1 1), (5 5, 6 6, 7 7))';
+    expect(parseWkt(wkt)).toEqual({
+      type: 'MultiLineString',
+      coordinates: [[[0, 0], [1, 1]], [[5, 5], [6, 6], [7, 7]]]
+    });
+  });
+
   it('geeft null terug voor onbekende geometrietypes', () => {
-    expect(parseWkt('LINESTRING(0 0, 1 1)')).toBeNull();
+    expect(parseWkt('TRIANGLE(0 0, 1 1, 2 2)')).toBeNull();
   });
 });

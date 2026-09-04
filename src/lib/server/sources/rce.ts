@@ -1,6 +1,7 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 import type { HeritageDetails } from '$lib/domain';
 import { getRceImages } from './rce-images';
+import { getWikidataMonumentImage } from './wikidata-images';
 import { getErfGeoNames, getPlaceName } from './erfgeo';
 import { fetchSourceJson } from '$lib/server/source-fetch';
 
@@ -85,11 +86,14 @@ export async function getRceMonumentDetails(monumentNumber: string, knownChoNumb
     .filter(Boolean).join(', ') || null;
   const choNumber = value(monument, 'cultuurhistorischObjectnummer') ?? knownChoNumber ?? null;
   const placeName = value(bag, 'woonplaatsnaam') ?? (location ? await getPlaceName(location.lon, location.lat).catch(() => null) : null);
-  const [semantic, images, historicalNames] = await Promise.all([
+  const [semantic, rceImages, historicalNames] = await Promise.all([
     choNumber ? getChoSemantics(choNumber) : Promise.resolve(null),
     getRceImages(monumentNumber).catch(() => []),
     getErfGeoNames(placeName).catch(() => [])
   ]);
+  // De RCE Beeldbank heeft niet voor ieder monument een foto; Wikidata (P359) wordt pas
+  // geraadpleegd als lazy fallback, alleen wanneer de RCE zelf niets opleverde.
+  const images = rceImages.length > 0 ? rceImages : await getWikidataMonumentImage(monumentNumber).then((image) => image ? [image] : []).catch(() => []);
   return {
     monumentNumber,
     choNumber,
