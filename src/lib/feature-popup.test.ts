@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, escapeHtml, municipalityHistoryPopup, rcePopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, rcePopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -81,5 +81,15 @@ describe('feature popups', () => {
     const html = municipalityHistoryPopup({ label: 'Zwolle (1812–1967)', startYear: 1812, endYear: 1967 });
     expect(html).toContain('Zwolle (1812–1967)');
     expect(html).toContain('Gemeentegeschiedenis');
+  });
+
+  it('toont sectie, blad en een link naar de minuutplan-scan', () => {
+    const html = minuutplanPopup({
+      code: 'MIN04062M01', province: 'Overijssel', municipality: 'Zwollekerspel',
+      section: 'M', sheet: '01', detailUrl: 'https://beeldbank.cultureelerfgoed.nl/rce-mediabank/detail/a7557ad0'
+    });
+    expect(html).toContain('Sectie M, blad 01');
+    expect(html).toContain('Zwollekerspel');
+    expect(html).toContain('Bekijk de kaart bij RCE');
   });
 });

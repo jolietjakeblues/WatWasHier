@@ -69,6 +69,7 @@ function context(buildings: Feature[] = []): LandscapeContext {
     heritage: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     municipalityHistory: { placeName: null, periods: [] },
+    minuutplans: { status: 'connected', sheets: [] },
     assertions: [{ id: 'bag', type: 'source_fact', statement: `PDOK leverde ${buildings.length} BAG-panden.`, sourceIds: ['source-pdok-bag'] }],
     provenance: [{ id: 'source-pdok-bag', source: 'pdok-bag', title: 'BAG', url: 'https://example.test/bag', retrievedAt: '2026-08-31T12:00:00Z' }],
     sourceStatus: [
@@ -134,16 +135,36 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
   await expect(page.getByLabel('BAG-panden')).not.toBeChecked();
   await expect(page.getByLabel('Gemeentegeschiedenis')).not.toBeChecked();
+  await expect(page.getByLabel('Kadastrale minuutplans')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
   await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
   await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
 });
+
+// De testgeometrie legt een verticale grenslijn precies op de lengtegraad van het kaartcentrum,
+// maar de exacte pixel waarop MapLibre die rendert kan een fractie afwijken door subpixel-afronding
+// — retries op exact dezelfde coördinaat lossen dat niet op. Waaier daarom horizontaal uit rond het
+// midden (0, +1, -1, +2, -2, ...) totdat een klik de lijn daadwerkelijk raakt.
+async function clickCenterUntilPopupVisible(page: Page, popupSelector: string) {
+  const canvas = page.locator('.maplibregl-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Kaartcanvas heeft geen afmetingen');
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+  let attempt = 0;
+  await expect(async () => {
+    const step = attempt++;
+    const offset = step === 0 ? 0 : Math.ceil(step / 2) * (step % 2 === 1 ? 1 : -1);
+    await page.mouse.click(centerX + offset, centerY);
+    await expect(page.locator(popupSelector)).toBeVisible({ timeout: 400 });
+  }).toPass({ timeout: 8000 });
+}
 
 test('gemeentegeschiedenis toont een klikbare historische gemeentegrens', async ({ page }) => {
   const data = context();
@@ -165,11 +186,31 @@ test('gemeentegeschiedenis toont een klikbare historische gemeentegrens', async 
     ]
   };
   await prepare(page, data);
-  const canvas = page.locator('.maplibregl-canvas');
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Kaartcanvas heeft geen afmetingen');
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await clickCenterUntilPopupVisible(page, '.feature-card--municipality');
   await expect(page.locator('.feature-card--municipality')).toContainText('Zwolle (1812–1967)');
+});
+
+test('kadastrale minuutplans tonen een klikbaar bladgrens', async ({ page }) => {
+  const data = context();
+  data.minuutplans = {
+    status: 'connected',
+    sheets: [
+      {
+        id: 'MIN04062M01', code: 'MIN04062M01', province: 'Overijssel', municipality: 'Zwollekerspel',
+        section: 'M', sheet: '01', detailUrl: 'https://beeldbank.cultureelerfgoed.nl/rce-mediabank/detail/a7557ad0',
+        // Rand op exact de lengtegraad van het kaartcentrum, zelfde truc als de gemeentegeschiedenis-test.
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[6.0, 52.3], [point.lon, 52.3], [point.lon, 52.7], [6.0, 52.7], [6.0, 52.3]]]
+        }
+      }
+    ]
+  };
+  await prepare(page, data);
+  await clickCenterUntilPopupVisible(page, '.feature-card--minuutplan');
+  const card = page.locator('.feature-card--minuutplan');
+  await expect(card).toContainText('Sectie M, blad 01');
+  await expect(card).toContainText('Zwollekerspel');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {
