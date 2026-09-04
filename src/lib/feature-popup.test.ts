@@ -47,6 +47,15 @@ describe('feature popups', () => {
     expect(rcePopup({}, emptyDetails)).toContain('Geen RCE-foto beschikbaar');
   });
 
+  it('labelt een Wikimedia Commons-foto anders dan een RCE-foto', () => {
+    const html = rcePopup({}, {
+      ...emptyDetails,
+      images: [{ uri: 'foto', title: null, description: 'Foto: Michiel1972 · CC BY-SA 3.0', thumbnailUrl: 'https://example.test/foto.jpg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:foto.jpg', licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0', graph: 'Wikimedia Commons' }]
+    });
+    expect(html).toContain('Bekijk op Wikimedia Commons');
+    expect(html).not.toContain('Open foto bij de RCE');
+  });
+
   it('toont de waarde (naam en periode) van elk ErfGeo-record, niet de brongraaf', () => {
     const records = [
       { uri: 'https://example.test/a', label: 'Veere', source: 'https://example.test/graph/gemeentegeschiedenis', startYear: 1812, endYear: 1966, matchMethod: 'place-label' as const, confidence: 0.65 },

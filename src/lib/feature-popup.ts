@@ -63,8 +63,9 @@ export function rcePopup(properties: GeoJsonProperties, details?: HeritageDetail
   const title = p.text || category;
   const url = p.ci_citation ? String(p.ci_citation) : null;
   const image = details?.images[0];
+  const imageFromCommons = image?.graph === 'Wikimedia Commons';
   const imageHtml = image?.thumbnailUrl
-    ? `<figure class="feature-card__image"><img src="${escapeHtml(image.thumbnailUrl)}" alt="${escapeHtml(image.description ?? image.title ?? title)}" loading="lazy" referrerpolicy="no-referrer" /><figcaption>${escapeHtml(image.description ?? image.title ?? 'RCE-foto')}${image.licenseUrl ? ` · <a href="${escapeHtml(image.licenseUrl)}" target="_blank" rel="noreferrer">licentie</a>` : ''}</figcaption></figure>`
+    ? `<figure class="feature-card__image"><img src="${escapeHtml(image.thumbnailUrl)}" alt="${escapeHtml(image.description ?? image.title ?? title)}" loading="lazy" referrerpolicy="no-referrer" /><figcaption>${escapeHtml(image.description ?? image.title ?? (imageFromCommons ? 'Wikimedia Commons' : 'RCE-foto'))}${image.licenseUrl ? ` · <a href="${escapeHtml(image.licenseUrl)}" target="_blank" rel="noreferrer">licentie</a>` : ''}</figcaption></figure>`
     : details
       ? '<p class="feature-card__image-status">Geen RCE-foto beschikbaar voor dit monument.</p>'
       : '';
@@ -84,7 +85,7 @@ export function rcePopup(properties: GeoJsonProperties, details?: HeritageDetail
   const descriptionHtml = description
     ? `<section class="feature-card__description"><h4>Beschrijving</h4><p>${escapeHtml(descriptionExcerpt)}</p>${description.length > 360 ? `<details><summary>Lees volledige beschrijving</summary><p>${escapeHtml(description)}</p></details>` : ''}</section>`
     : '';  const imageSource = image?.sourceUrl
-    ? `<a href="${escapeHtml(image.sourceUrl)}" target="_blank" rel="noreferrer">Open foto bij de RCE</a>`
+    ? `<a href="${escapeHtml(image.sourceUrl)}" target="_blank" rel="noreferrer">${imageFromCommons ? 'Bekijk op Wikimedia Commons' : 'Open foto bij de RCE'}</a>`
     : '';
   return `<div class="feature-card feature-card--rce"><span class="feature-card__type">${escapeHtml(category)}</span><h3>${escapeHtml(details?.originalFunction ?? title)}</h3>${imageHtml}<dl>${row('RCE-identificatie', details?.monumentNumber ?? monumentNumber(url) ?? p.localid)}${row('Adres', details?.address)}${row('CHO-nummer', details?.choNumber)}${row('Functie', details?.originalFunction)}${row('Status', details?.legalStatus)}${row('Beschermd sinds', details?.registeredAt ?? p.legalfoundationdate)}${row('Foto’s', details?.images.length)}</dl>${descriptionHtml}${placeContext}${loading ? '<p class="feature-card__loading">CHO-relaties worden geladen…</p>' : ''}${imageSource}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open monumentregister</a>` : ''}</div>`;
 }
