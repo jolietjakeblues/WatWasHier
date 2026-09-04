@@ -14,6 +14,7 @@ test.beforeEach(async ({ page }) => {
     percelen: { status: 'connected', items: [] },
     disappearedVillages: { status: 'connected', items: [] },
     defenceLines: { status: 'connected', items: [] },
+    historicGardens: { status: 'connected', items: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

@@ -45,6 +45,12 @@ export function defenceLinePopup(properties: GeoJsonProperties): string {
   return `<div class="feature-card feature-card--linie"><span class="feature-card__type">Historische linie</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Periode', p.period)}</dl><p class="feature-card__description">Historische verdedigingslinie, via de RCE CHO-linked-data.</p></div>`;
 }
 
+export function historicGardenPopup(properties: GeoJsonProperties): string {
+  const p = properties ?? {};
+  const area = formatArea(p.areaSquareMeters);
+  return `<div class="feature-card feature-card--garden"><span class="feature-card__type">Historische groenaanleg</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Categorie', p.category)}${area ? row('Oppervlakte', area) : ''}</dl><p class="feature-card__description">Historische tuin- of landschapsarchitectuur, via de RCE CHO-linked-data.</p></div>`;
+}
+
 function formatArea(squareMeters: unknown): string | null {
   const value = typeof squareMeters === 'number' ? squareMeters : Number(squareMeters);
   if (!Number.isFinite(value)) return null;

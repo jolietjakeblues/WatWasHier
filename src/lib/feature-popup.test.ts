@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, defenceLinePopup, disappearedVillagePopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, defenceLinePopup, disappearedVillagePopup, escapeHtml, historicGardenPopup, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -130,5 +130,12 @@ describe('feature popups', () => {
     const html = defenceLinePopup({ label: 'Kazematlinie Oldeneel-Haerst', period: 'WO2' });
     expect(html).toContain('Kazematlinie Oldeneel-Haerst');
     expect(html).toContain('WO2');
+  });
+
+  it('toont naam, categorie en oppervlakte van een historische groenaanleg', () => {
+    const html = historicGardenPopup({ label: 'Het Engelse Werk', category: 'stadsparken en plantsoenen', areaSquareMeters: 209400.59 });
+    expect(html).toContain('Het Engelse Werk');
+    expect(html).toContain('stadsparken en plantsoenen');
+    expect(html).toContain('20,94 ha');
   });
 });

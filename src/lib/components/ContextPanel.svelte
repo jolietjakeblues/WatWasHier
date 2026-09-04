@@ -139,6 +139,7 @@
         <div class="overview-tile"><span>{context.percelen.status === 'connected' ? context.percelen.items.length : '–'}</span><small>Percelen</small></div>
         <div class="overview-tile"><span>{context.disappearedVillages.status === 'connected' ? context.disappearedVillages.items.length : '–'}</span><small>Verdwenen&shy;dorpen</small></div>
         <div class="overview-tile"><span>{context.defenceLines.status === 'connected' ? context.defenceLines.items.length : '–'}</span><small>Linies</small></div>
+        <div class="overview-tile"><span>{context.historicGardens.status === 'connected' ? context.historicGardens.items.length : '–'}</span><small>Groenaanleg</small></div>
         <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
       </div>
     </section>
@@ -360,6 +361,24 @@
           {/if}
         {:else}
           <p class="muted">De bron voor historische linies kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Historische groenaanleg</span><small>{context.historicGardens.status === 'connected' ? `${context.historicGardens.items.length} aanleggen` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.historicGardens.status === 'connected'}
+          {#if context.historicGardens.items.length}
+            <p class="muted">Historische tuin- en landschapsarchitectuur staat als groene vlakken op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.historicGardens.items as garden}
+                <li>{garden.label}{garden.category ? ` — ${garden.category}` : ''}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie is geen historische groenaanleg gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De bron voor historische groenaanleg kon niet worden bereikt.</p>
         {/if}
       </details>
 
