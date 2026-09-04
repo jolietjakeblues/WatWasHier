@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, disappearedVillagePopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -117,5 +117,12 @@ describe('feature popups', () => {
   it('toont de oppervlakte van een groot perceel in hectare', () => {
     const html = perceelPopup({ gemeente: 'Zwolle', sectie: 'M', perceelnummer: '1', areaSquareMeters: 218230 });
     expect(html).toContain('21,82 ha');
+  });
+
+  it('toont naam, jaartal en bron van een verdwenen dorp', () => {
+    const html = disappearedVillagePopup({ label: 'Westkerke', date: '1375', source: 'Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152' });
+    expect(html).toContain('Westkerke');
+    expect(html).toContain('1375');
+    expect(html).toContain('Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152');
   });
 });

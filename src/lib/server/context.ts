@@ -3,7 +3,7 @@ import { getBagBuildings } from './sources/pdok';
 import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
-import { getMunicipalityHistoryForLocation, getToponyms } from './sources/erfgeo';
+import { getDisappearedVillages, getMunicipalityHistoryForLocation, getToponyms } from './sources/erfgeo';
 import { getMinuutplanSheets } from './sources/minuutplans';
 import { getPercelen } from './sources/kadaster-percelen';
 import { bboxAroundPoint } from '$lib/geo';
@@ -43,7 +43,7 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult, percelenResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult, percelenResult, disappearedVillagesResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
@@ -51,7 +51,8 @@ export async function buildLandscapeContext(
     getMunicipalityHistoryForLocation(location.lon, location.lat),
     getMinuutplanSheets(location.bbox),
     getToponyms(location.bbox),
-    getPercelen(location.lon, location.lat, location.bbox)
+    getPercelen(location.lon, location.lat, location.bbox),
+    getDisappearedVillages(location.bbox)
   ]);
 
   const buildings =
@@ -93,6 +94,8 @@ export async function buildLandscapeContext(
   if (toponymsResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo kloekecodes', toponymsResult.reason));
   const percelen = percelenResult.status === 'fulfilled' ? percelenResult.value : [];
   if (percelenResult.status === 'rejected') warnings.push(sourceWarning('Kadaster KKG percelen', percelenResult.reason));
+  const disappearedVillages = disappearedVillagesResult.status === 'fulfilled' ? disappearedVillagesResult.value : [];
+  if (disappearedVillagesResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo verdwenen dorpen', disappearedVillagesResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -172,6 +175,17 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (disappearedVillages.length > 0) {
+    provenance.push({
+      id: 'source-erfgeo-verdwenendorpen',
+      source: 'erfgeo-verdwenendorpen',
+      title: 'RCE ErfGeo - Verdwenen dorpen (Bert Stulp)',
+      url: 'https://linkeddata.cultureelerfgoed.nl/graph/verdwenendorpen',
+      retrievedAt: now(),
+      license: 'CC0'
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
@@ -181,7 +195,8 @@ export async function buildLandscapeContext(
     statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult),
     statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult),
     statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult),
-    statusFor('kadaster-kkg-percelen', 'Kadaster KKG percelen', percelenResult)
+    statusFor('kadaster-kkg-percelen', 'Kadaster KKG percelen', percelenResult),
+    statusFor('erfgeo-verdwenendorpen', 'ErfGeo verdwenen dorpen', disappearedVillagesResult)
   ];
 
   return {
@@ -213,6 +228,10 @@ export async function buildLandscapeContext(
     percelen: {
       status: percelenResult.status === 'fulfilled' ? 'connected' : 'not-connected',
       items: percelen
+    },
+    disappearedVillages: {
+      status: disappearedVillagesResult.status === 'fulfilled' ? 'connected' : 'not-connected',
+      items: disappearedVillages
     },
     assertions: [
       {

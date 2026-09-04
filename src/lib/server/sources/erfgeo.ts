@@ -1,10 +1,11 @@
-import type { HistoricalName, MunicipalityBoundaryPeriod, Toponym } from '$lib/domain';
+import type { DisappearedVillage, HistoricalName, MunicipalityBoundaryPeriod, Toponym } from '$lib/domain';
 import { fetchSourceJson } from '$lib/server/source-fetch';
 import { parseWkt } from '$lib/server/wkt';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/erfgeo/sparql';
 const GEMEENTEGESCHIEDENIS_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/gemeentegeschiedenis';
 const KLOEKECODES_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/kloekecodes';
+const VERDWENENDORPEN_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/verdwenendorpen';
 type Binding = Record<string, { value?: string }>;
 
 async function lookupNearestAddress(lon: number, lat: number): Promise<{ woonplaatsnaam?: string; gemeentenaam?: string } | null> {
@@ -167,6 +168,50 @@ SELECT ?s ?title ?id ?lon ?lat WHERE {
   endpoint.searchParams.set('query', query);
   const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo kloekecodes', headers: { accept: 'application/sparql-results+json' } });
   return parseToponymBindings(result.results?.bindings ?? []);
+}
+
+export function parseDisappearedVillageBindings(bindings: Binding[]): DisappearedVillage[] {
+  const items = new Map<string, DisappearedVillage>();
+  for (const row of bindings) {
+    const uri = row.s?.value;
+    const label = row.title?.value?.trim();
+    const lon = row.lon?.value ? Number.parseFloat(row.lon.value) : NaN;
+    const lat = row.lat?.value ? Number.parseFloat(row.lat.value) : NaN;
+    if (!uri || !label || !Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+    items.set(uri, {
+      id: uri,
+      label,
+      date: row.date?.value?.trim() || null,
+      source: row.source?.value?.trim() || null,
+      lon,
+      lat
+    });
+  }
+  return [...items.values()];
+}
+
+// Bron: Bert Stulp, "Verdwenen Dorpen" (boekenreeks) — via RCE ErfGeo als puntenlaag met naam,
+// (geschat) jaartal van verdwijnen en boekverwijzing. Zelfde bbox-in-SPARQL-truc als getToponyms.
+export async function getDisappearedVillages(bbox: [number, number, number, number]): Promise<DisappearedVillage[]> {
+  const [minLon, minLat, maxLon, maxLat] = bbox;
+  const query = `PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?s ?title ?date ?source ?lon ?lat WHERE {
+  GRAPH <${VERDWENENDORPEN_GRAPH}> {
+    ?s a ?type ;
+       <http://purl.org/dc/elements/1.1/title> ?title ;
+       <http://www.opengis.net/ont/geosparql#asWKT> ?wkt .
+    OPTIONAL { ?s <http://purl.org/dc/elements/1.1/date> ?date }
+    OPTIONAL { ?s <http://purl.org/dc/elements/1.1/source> ?source }
+    BIND(STRAFTER(STR(?wkt), "(") AS ?coords)
+    BIND(xsd:double(STRBEFORE(?coords, " ")) AS ?lon)
+    BIND(xsd:double(STRBEFORE(STRAFTER(?coords, " "), ")")) AS ?lat)
+    FILTER(?lon >= ${minLon} && ?lon <= ${maxLon} && ?lat >= ${minLat} && ?lat <= ${maxLat})
+  }
+} LIMIT 100`;
+  const endpoint = new URL(ENDPOINT);
+  endpoint.searchParams.set('query', query);
+  const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo verdwenen dorpen', headers: { accept: 'application/sparql-results+json' } });
+  return parseDisappearedVillageBindings(result.results?.bindings ?? []);
 }
 
 export async function getMunicipalityHistoryForLocation(

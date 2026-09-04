@@ -72,6 +72,7 @@ function context(buildings: Feature[] = []): LandscapeContext {
     minuutplans: { status: 'connected', sheets: [] },
     toponyms: { status: 'connected', items: [] },
     percelen: { status: 'connected', items: [] },
+    disappearedVillages: { status: 'connected', items: [] },
     assertions: [{ id: 'bag', type: 'source_fact', statement: `PDOK leverde ${buildings.length} BAG-panden.`, sourceIds: ['source-pdok-bag'] }],
     provenance: [{ id: 'source-pdok-bag', source: 'pdok-bag', title: 'BAG', url: 'https://example.test/bag', retrievedAt: '2026-08-31T12:00:00Z' }],
     sourceStatus: [
@@ -137,7 +138,7 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&toponiemen=0&percelen=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&toponiemen=0&percelen=0&verdwenendorpen=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
@@ -146,6 +147,7 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
   await expect(page.getByLabel('Kadastrale minuutplans')).not.toBeChecked();
   await expect(page.getByLabel('Historische plaatsnamen')).not.toBeChecked();
   await expect(page.getByLabel('Kadastrale percelen')).not.toBeChecked();
+  await expect(page.getByLabel('Verdwenen dorpen')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
   await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
   await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
@@ -250,6 +252,20 @@ test('kadastrale percelen tonen een klikbare perceelgrens', async ({ page }) => 
   const card = page.locator('.feature-card--perceel');
   await expect(card).toContainText('Zwolle M 4370');
   await expect(card).toContainText('293 m²');
+});
+
+test('verdwenen dorpen tonen een klikbaar punt met jaartal en bron', async ({ page }) => {
+  const data = context();
+  data.disappearedVillages = {
+    status: 'connected',
+    items: [{ id: 'https://example.test/verdwenendorpen/westkerke', label: 'Westkerke', date: '1375', source: 'Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152', lon: point.lon, lat: point.lat }]
+  };
+  await prepare(page, data);
+  await clickCenterUntilPopupVisible(page, '.feature-card--village');
+  const card = page.locator('.feature-card--village');
+  await expect(card).toContainText('Westkerke');
+  await expect(card).toContainText('1375');
+  await expect(card).toContainText('Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {

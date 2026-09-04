@@ -35,6 +35,11 @@ export function toponymPopup(properties: GeoJsonProperties): string {
   return `<div class="feature-card feature-card--toponym"><span class="feature-card__type">Historische plaatsnaam</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Kloeke-code', p.kloekeCode)}</dl><p class="feature-card__description">Kloekecodes zijn een historische naamgeving voor plaatsen en buurtschappen, via RCE ErfGeo.</p></div>`;
 }
 
+export function disappearedVillagePopup(properties: GeoJsonProperties): string {
+  const p = properties ?? {};
+  return `<div class="feature-card feature-card--village"><span class="feature-card__type">Verdwenen dorp</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Laatst genoemd', p.date)}</dl><p class="feature-card__description">${p.source ? escapeHtml(p.source) : 'Bron: Bert Stulp, Verdwenen Dorpen'}</p></div>`;
+}
+
 function formatArea(squareMeters: unknown): string | null {
   const value = typeof squareMeters === 'number' ? squareMeters : Number(squareMeters);
   if (!Number.isFinite(value)) return null;

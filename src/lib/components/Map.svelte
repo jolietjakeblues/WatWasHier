@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { BuildingFeature, LandscapeContext } from '$lib/domain';
   import { actionForMapClick, buildingIdFromFeature } from '$lib/map-interaction';
-  import { archaeologyPopup, bagPopup, minuutplanPopup, monumentNumber, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from '$lib/feature-popup';
+  import { archaeologyPopup, bagPopup, disappearedVillagePopup, minuutplanPopup, monumentNumber, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from '$lib/feature-popup';
   import type { ArchaeologyDetails, HeritageDetails } from '$lib/domain';
   import { ALPHA_START_LOCATION } from '$lib/locations';
   import { optionalNumber } from '$lib/url-params';
@@ -95,6 +95,17 @@
       }))
     };
   }
+  function disappearedVillagesCollection(landscape: LandscapeContext | null) {
+    const items = landscape?.disappearedVillages.items ?? [];
+    return {
+      type: 'FeatureCollection' as const,
+      features: items.map((village) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [village.lon, village.lat] },
+        properties: { label: village.label, date: village.date, source: village.source }
+      }))
+    };
+  }
   let container: HTMLDivElement;
   let compareContainer = $state<HTMLDivElement>();
   let map: import('maplibre-gl').Map | null = null;
@@ -121,6 +132,7 @@
   let showMinuutplans = $state(true);
   let showToponyms = $state(true);
   let showPercelen = $state(true);
+  let showDisappearedVillages = $state(true);
   let showHistorical = $state(true);
   let layerPanelOpen = $state(false);
   let background = $state<'brt' | 'aerial' | 'none'>('brt');
@@ -150,6 +162,7 @@
     for (const id of ['minuutplans-fill', 'minuutplans-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showMinuutplans ? 'visible' : 'none');
     if (map.getLayer('toponyms-points')) map.setLayoutProperty('toponyms-points', 'visibility', showToponyms ? 'visible' : 'none');
     for (const id of ['percelen-fill', 'percelen-line']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showPercelen ? 'visible' : 'none');
+    if (map.getLayer('disappeared-villages-points')) map.setLayoutProperty('disappeared-villages-points', 'visibility', showDisappearedVillages ? 'visible' : 'none');
     if (showHistorical) syncHistoricalMap();
     else removeHistoricalLayer();
     if (map.getLayer('brt-gray')) map.setLayoutProperty('brt-gray', 'visibility', background === 'brt' ? 'visible' : 'none');
@@ -175,6 +188,7 @@
     url.searchParams.set('minuutplans', showMinuutplans ? '1' : '0');
     url.searchParams.set('toponiemen', showToponyms ? '1' : '0');
     url.searchParams.set('percelen', showPercelen ? '1' : '0');
+    url.searchParams.set('verdwenendorpen', showDisappearedVillages ? '1' : '0');
     url.searchParams.set('opacity', historicalOpacity.toFixed(2));
     history.replaceState(history.state, '', url);
   }
@@ -200,6 +214,7 @@
     const minuutplans = map.getSource('minuutplans') as import('maplibre-gl').GeoJSONSource | undefined;
     const toponyms = map.getSource('toponyms') as import('maplibre-gl').GeoJSONSource | undefined;
     const percelen = map.getSource('percelen') as import('maplibre-gl').GeoJSONSource | undefined;
+    const disappearedVillages = map.getSource('disappeared-villages') as import('maplibre-gl').GeoJSONSource | undefined;
     buildings?.setData(context?.current.buildings ?? emptyCollection());
     heritage?.setData(context?.heritage.objects ?? emptyCollection());
     archaeology?.setData(context?.archaeology.objects ?? emptyCollection());
@@ -207,6 +222,7 @@
     minuutplans?.setData(minuutplansCollection(context));
     toponyms?.setData(toponymsCollection(context));
     percelen?.setData(percelenCollection(context));
+    disappearedVillages?.setData(disappearedVillagesCollection(context));
     const building = findSelectedBuilding();
     selection?.setData(building ? { type: 'FeatureCollection', features: [building] } : emptyCollection());
     if (context) marker?.setLngLat([context.location.lon, context.location.lat]);
@@ -361,7 +377,7 @@
     }
     updateMapUrl();
   });
-  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showMinuutplans; showToponyms; showPercelen; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
+  $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showMinuutplans; showToponyms; showPercelen; showDisappearedVillages; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
   $effect(() => {
     if (compareMode && (!showHistorical || !selectedHistoricalMapId)) compareMode = false;
   });
@@ -388,6 +404,7 @@
       showMinuutplans = paramEnabled(params, 'minuutplans');
       showToponyms = paramEnabled(params, 'toponiemen');
       showPercelen = paramEnabled(params, 'percelen');
+      showDisappearedVillages = paramEnabled(params, 'verdwenendorpen');
       const requestedOpacity = optionalNumber(params, 'opacity');
       if (requestedOpacity !== null && requestedOpacity >= 0 && requestedOpacity <= 1) historicalOpacity = requestedOpacity;
       const requestedLon = optionalNumber(params, 'lon');
@@ -447,6 +464,8 @@
         map.addSource('percelen', { type: 'geojson', data: percelenCollection(context) });
         map.addLayer({ id: 'percelen-fill', type: 'fill', source: 'percelen', paint: { 'fill-color': '#475569', 'fill-opacity': 0.03 } });
         map.addLayer({ id: 'percelen-line', type: 'line', source: 'percelen', paint: { 'line-color': '#475569', 'line-width': 1, 'line-opacity': 0.7 } });
+        map.addSource('disappeared-villages', { type: 'geojson', data: disappearedVillagesCollection(context) });
+        map.addLayer({ id: 'disappeared-villages-points', type: 'circle', source: 'disappeared-villages', paint: { 'circle-radius': 5, 'circle-color': '#78716c', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 } });
         map.addSource('bag-buildings', { type: 'geojson', data: emptyCollection() });
         map.addLayer({ id: 'bag-buildings-fill', type: 'fill', source: 'bag-buildings', paint: { 'fill-color': '#117865', 'fill-opacity': 0.3 } });
         map.addLayer({ id: 'bag-buildings-line', type: 'line', source: 'bag-buildings', paint: { 'line-color': '#075a4b', 'line-width': 1.5 } });
@@ -483,6 +502,7 @@
         const minuutplanHits = map.queryRenderedFeatures(event.point, { layers: ['minuutplans-line'] });
         const toponymHits = map.queryRenderedFeatures(event.point, { layers: ['toponyms-points'] });
         const perceelHits = map.queryRenderedFeatures(event.point, { layers: ['percelen-line'] });
+        const disappearedVillageHits = map.queryRenderedFeatures(event.point, { layers: ['disappeared-villages-points'] });
 
         if (showArchaeology && archaeologyHits[0] && !heritageHits[0]) {
           heritagePanelHtml = null;
@@ -537,6 +557,15 @@
             .addTo(map);
           return;
         }
+        if (showDisappearedVillages && disappearedVillageHits[0]) {
+          heritagePanelHtml = null;
+          popup?.remove();
+          popup = new maplibregl.Popup({ closeButton: true, maxWidth: '300px', offset: 10 })
+            .setLngLat(event.lngLat)
+            .setHTML(disappearedVillagePopup(disappearedVillageHits[0].properties))
+            .addTo(map);
+          return;
+        }
         const action = actionForMapClick(buildingHits, event.lngLat.lng, event.lngLat.lat);
         if (action.type === 'select-building') {
           heritagePanelHtml = null;
@@ -585,7 +614,7 @@
 
       map.on('mousemove', (event) => {
         if (!map || !map.getLayer('bag-buildings-fill')) return;
-        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas', 'municipality-history-line', 'minuutplans-line', 'toponyms-points', 'percelen-line'] });
+        const hits = map.queryRenderedFeatures(event.point, { layers: ['bag-buildings-fill', 'rce-monuments-points', 'rce-monuments-fill', 'rce-faces-points', 'rce-faces-fill', 'rce-world-points', 'rce-world-fill', 'archaeology-points', 'archaeology-lines', 'archaeology-areas', 'municipality-history-line', 'minuutplans-line', 'toponyms-points', 'percelen-line', 'disappeared-villages-points'] });
         map.getCanvas().style.cursor = hits.length ? 'pointer' : 'crosshair';
       });
     })();
@@ -679,6 +708,7 @@
         <label><input type="checkbox" bind:checked={showMinuutplans} /><span class="swatch swatch--minuutplans"></span>Kadastrale minuutplans</label>
         <label><input type="checkbox" bind:checked={showToponyms} /><span class="swatch swatch--toponyms"></span>Historische plaatsnamen</label>
         <label><input type="checkbox" bind:checked={showPercelen} /><span class="swatch swatch--percelen"></span>Kadastrale percelen</label>
+        <label><input type="checkbox" bind:checked={showDisappearedVillages} /><span class="swatch swatch--village"></span>Verdwenen dorpen</label>
       </fieldset>
     </div>
   {/if}
@@ -723,6 +753,7 @@
   .swatch--minuutplans { background: #78350f; }
   .swatch--toponyms { border-radius: 50%; background: #c026d3; }
   .swatch--percelen { background: #475569; }
+  .swatch--village { border-radius: 50%; background: #78716c; }
   .swatch--compare { border-radius: 50%; background: #18332b; }
   .map :global(.maplibregl-popup-content) { max-height: min(620px, calc(100dvh - 96px)); padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 32px rgba(10, 31, 24, 0.24); }
   .map :global(.maplibregl-popup-close-button) { z-index: 2; padding: 7px 10px; font-size: 20px; color: #344b43; }
@@ -733,12 +764,14 @@
   .map-shell :global(.feature-card--minuutplan) { border-top-color: #78350f; }
   .map-shell :global(.feature-card--toponym) { border-top-color: #c026d3; }
   .map-shell :global(.feature-card--perceel) { border-top-color: #475569; }
+  .map-shell :global(.feature-card--village) { border-top-color: #78716c; }
   .map-shell :global(.feature-card__type) { color: #117865; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .map-shell :global(.feature-card--rce .feature-card__type) { color: #6d28d9; }
   .map-shell :global(.feature-card--municipality .feature-card__type) { color: #1d4ed8; }
   .map-shell :global(.feature-card--minuutplan .feature-card__type) { color: #78350f; }
   .map-shell :global(.feature-card--toponym .feature-card__type) { color: #a21caf; }
   .map-shell :global(.feature-card--perceel .feature-card__type) { color: #334155; }
+  .map-shell :global(.feature-card--village .feature-card__type) { color: #57534e; }
   .map-shell :global(.feature-card h3) { margin: 5px 28px 12px 0; font-size: 17px; line-height: 1.25; }
   .map-shell :global(.feature-card dl) { display: grid; gap: 6px; margin: 0 0 13px; }
   .map-shell :global(.feature-card dl div) { display: grid; grid-template-columns: 105px 1fr; gap: 10px; }

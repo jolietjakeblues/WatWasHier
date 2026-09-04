@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
     minuutplans: { status: 'connected', sheets: [] },
     toponyms: { status: 'connected', items: [] },
     percelen: { status: 'connected', items: [] },
+    disappearedVillages: { status: 'connected', items: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');
