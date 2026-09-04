@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     municipalityHistory: { placeName: null, periods: [] },
     minuutplans: { status: 'connected', sheets: [] },
+    toponyms: { status: 'connected', items: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

@@ -1,9 +1,10 @@
-import type { HistoricalName, MunicipalityBoundaryPeriod } from '$lib/domain';
+import type { HistoricalName, MunicipalityBoundaryPeriod, Toponym } from '$lib/domain';
 import { fetchSourceJson } from '$lib/server/source-fetch';
 import { parseWkt } from '$lib/server/wkt';
 
 const ENDPOINT = 'https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/erfgeo/sparql';
 const GEMEENTEGESCHIEDENIS_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/gemeentegeschiedenis';
+const KLOEKECODES_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/kloekecodes';
 type Binding = Record<string, { value?: string }>;
 
 export async function getPlaceName(lon: number, lat: number): Promise<string | null> {
@@ -111,6 +112,46 @@ export async function getMunicipalityHistory(placeName: string | null): Promise<
   endpoint.searchParams.set('query', query);
   const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo gemeentegeschiedenis', headers: { accept: 'application/sparql-results+json' } });
   return parseMunicipalityHistory(result.results?.bindings ?? [], placeName);
+}
+
+export function parseToponymBindings(bindings: Binding[]): Toponym[] {
+  const items = new Map<string, Toponym>();
+  for (const row of bindings) {
+    const uri = row.s?.value;
+    const label = row.title?.value?.trim();
+    const kloekeCode = row.id?.value?.trim();
+    const lon = row.lon?.value ? Number.parseFloat(row.lon.value) : NaN;
+    const lat = row.lat?.value ? Number.parseFloat(row.lat.value) : NaN;
+    if (!uri || !label || !kloekeCode || !Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+    items.set(uri, { id: uri, label, kloekeCode, lon, lat });
+  }
+  return [...items.values()];
+}
+
+// De kloekecodes-graaf is een historische plaatsnamen-gazetteer (buurtschappen, gehuchten),
+// niet een dialectuitspraak-thesaurus — elke plek heeft één titel en één Kloeke-identificatiecode.
+// De WKT-punten worden in SPARQL zelf uitgesplitst naar lon/lat zodat de bbox-filter serverside
+// gebeurt: de graaf heeft geen bbox-parameter, en alle ~4500 punten landelijk ophalen per klik
+// zou onnodig zwaar zijn.
+export async function getToponyms(bbox: [number, number, number, number]): Promise<Toponym[]> {
+  const [minLon, minLat, maxLon, maxLat] = bbox;
+  const query = `PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?s ?title ?id ?lon ?lat WHERE {
+  GRAPH <${KLOEKECODES_GRAPH}> {
+    ?s a <http://rdf.histograph.io/PlaceInTime> ;
+       <http://purl.org/dc/elements/1.1/title> ?title ;
+       <http://purl.org/dc/elements/1.1/identifier> ?id ;
+       <http://www.opengis.net/ont/geosparql#asWKT> ?wkt .
+    BIND(STRAFTER(STR(?wkt), "(") AS ?coords)
+    BIND(xsd:double(STRBEFORE(?coords, " ")) AS ?lon)
+    BIND(xsd:double(STRBEFORE(STRAFTER(?coords, " "), ")")) AS ?lat)
+    FILTER(?lon >= ${minLon} && ?lon <= ${maxLon} && ?lat >= ${minLat} && ?lat <= ${maxLat})
+  }
+} LIMIT 100`;
+  const endpoint = new URL(ENDPOINT);
+  endpoint.searchParams.set('query', query);
+  const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(endpoint, { source: 'RCE ErfGeo kloekecodes', headers: { accept: 'application/sparql-results+json' } });
+  return parseToponymBindings(result.results?.bindings ?? []);
 }
 
 export async function getMunicipalityHistoryForLocation(

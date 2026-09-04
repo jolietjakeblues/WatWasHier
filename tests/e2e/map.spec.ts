@@ -70,6 +70,7 @@ function context(buildings: Feature[] = []): LandscapeContext {
     archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
     municipalityHistory: { placeName: null, periods: [] },
     minuutplans: { status: 'connected', sheets: [] },
+    toponyms: { status: 'connected', items: [] },
     assertions: [{ id: 'bag', type: 'source_fact', statement: `PDOK leverde ${buildings.length} BAG-panden.`, sourceIds: ['source-pdok-bag'] }],
     provenance: [{ id: 'source-pdok-bag', source: 'pdok-bag', title: 'BAG', url: 'https://example.test/bag', retrievedAt: '2026-08-31T12:00:00Z' }],
     sourceStatus: [
@@ -135,13 +136,14 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&toponiemen=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
   await expect(page.getByLabel('BAG-panden')).not.toBeChecked();
   await expect(page.getByLabel('Gemeentegeschiedenis')).not.toBeChecked();
   await expect(page.getByLabel('Kadastrale minuutplans')).not.toBeChecked();
+  await expect(page.getByLabel('Historische plaatsnamen')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
   await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
   await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
@@ -211,6 +213,19 @@ test('kadastrale minuutplans tonen een klikbaar bladgrens', async ({ page }) => 
   const card = page.locator('.feature-card--minuutplan');
   await expect(card).toContainText('Sectie M, blad 01');
   await expect(card).toContainText('Zwollekerspel');
+});
+
+test('historische plaatsnamen tonen een klikbare Kloeke-code', async ({ page }) => {
+  const data = context();
+  data.toponyms = {
+    status: 'connected',
+    items: [{ id: 'https://example.test/kloekecodes/mastenbroek', label: 'Mastenbroek', kloekeCode: 'F094p', lon: point.lon, lat: point.lat }]
+  };
+  await prepare(page, data);
+  await clickCenterUntilPopupVisible(page, '.feature-card--toponym');
+  const card = page.locator('.feature-card--toponym');
+  await expect(card).toContainText('Mastenbroek');
+  await expect(card).toContainText('F094p');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {

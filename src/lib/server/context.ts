@@ -3,7 +3,7 @@ import { getBagBuildings } from './sources/pdok';
 import { getWatertijdreisContext } from './sources/watertijdreis';
 import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
-import { getMunicipalityHistoryForLocation } from './sources/erfgeo';
+import { getMunicipalityHistoryForLocation, getToponyms } from './sources/erfgeo';
 import { getMinuutplanSheets } from './sources/minuutplans';
 import { bboxAroundPoint } from '$lib/geo';
 import { SourceFetchError } from './source-fetch';
@@ -42,13 +42,14 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
     getArchaeology(location.bbox),
     getMunicipalityHistoryForLocation(location.lon, location.lat),
-    getMinuutplanSheets(location.bbox)
+    getMinuutplanSheets(location.bbox),
+    getToponyms(location.bbox)
   ]);
 
   const buildings =
@@ -86,6 +87,8 @@ export async function buildLandscapeContext(
   if (municipalityHistoryResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo gemeentegeschiedenis', municipalityHistoryResult.reason));
   const minuutplanSheets = minuutplansResult.status === 'fulfilled' ? minuutplansResult.value : [];
   if (minuutplansResult.status === 'rejected') warnings.push(sourceWarning('RCE kadastrale minuutplans', minuutplansResult.reason));
+  const toponyms = toponymsResult.status === 'fulfilled' ? toponymsResult.value : [];
+  if (toponymsResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo kloekecodes', toponymsResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -144,6 +147,17 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (toponyms.length > 0) {
+    provenance.push({
+      id: 'source-erfgeo-kloekecodes',
+      source: 'erfgeo-kloekecodes',
+      title: 'RCE ErfGeo - Kloekecodes (historische plaatsnamen)',
+      url: 'https://linkeddata.cultureelerfgoed.nl/graph/kloekecodes',
+      retrievedAt: now(),
+      license: 'CC0'
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
@@ -151,7 +165,8 @@ export async function buildLandscapeContext(
     statusFor('rce', 'RCE-erfgoed', heritageResult),
     statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult),
     statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult),
-    statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult)
+    statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult),
+    statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult)
   ];
 
   return {
@@ -175,6 +190,10 @@ export async function buildLandscapeContext(
     minuutplans: {
       status: minuutplansResult.status === 'fulfilled' ? 'connected' : 'not-connected',
       sheets: minuutplanSheets
+    },
+    toponyms: {
+      status: toponymsResult.status === 'fulfilled' ? 'connected' : 'not-connected',
+      items: toponyms
     },
     assertions: [
       {
