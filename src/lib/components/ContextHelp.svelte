@@ -6,7 +6,7 @@
     ['Onderzoek een plek', 'Klik op de kaart. WatWasHier verzamelt actuele gebouwen, erfgoed, archeologie en historische kaarten. Pas de twee zoekstralen aan om het onderzoeksgebied te vergroten of te verkleinen.'],
     ['Bekijk objectdetails', 'Zet een kaartlaag aan en klik op een gekleurd object. Een groen vlak is een BAG-pand. Andere kleuren tonen erfgoed of archeologische informatie.'],
     ['Reis door de tijd', 'Kies een jaar op de tijdlijn. Met Doorzichtigheid vergelijk je de historische Waterstaatskaart met de rustige PDOK BRT-achtergrond.'],
-    ['Controleer en deel', 'Bronfeiten komen rechtstreeks uit een bron. Observaties zijn berekend. Hypotheses zijn interpretaties. Bij een bronstoring kun je de bronnen opnieuw proberen. Open i voor de herkomst en gebruik de deelknop om deze plek, kaartstand en lagen te delen.']
+    ['Controleer en deel', 'Onder Bronnen zie je welke bronnen zijn geraadpleegd en of ze bereikbaar waren; bij een storing kun je opnieuw proberen. Open i voor de volledige herkomst en gebruik de deelknop om deze plek, kaartstand en lagen te delen.']
   ] as const;
 
   let open = $state(false);

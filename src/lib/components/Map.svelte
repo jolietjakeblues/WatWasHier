@@ -222,7 +222,7 @@
     historicalLayer = new HistoricalLayerConstructor({ layerId: 'waterstaatskaart' });
     map.addLayer(historicalLayer as unknown as import('maplibre-gl').AddLayerObject, 'bag-buildings-fill');
     rendererMapId = historicalLayer.addGeoreferencedMap(selected.georeferencedMap, {
-      visible: true,
+      visible: !compareMode,
       opacity: historicalOpacity,
       applyMask: true,
       transformationType: 'thinPlateSpline'
@@ -235,6 +235,7 @@
     if (compareMap && compareHistoricalLayer && compareMap.getLayer(compareHistoricalLayer.id)) compareMap.removeLayer(compareHistoricalLayer.id);
     compareHistoricalLayer = null;
     compareRendererMapId = null;
+    compareRepaintToken++;
   }
 
   function pumpCompareRepaint(durationMs = 4000) {
@@ -272,21 +273,27 @@
     compareRepaintToken++;
   }
 
+  let creatingCompareMap = false;
   async function createCompareMap() {
-    if (!map || compareMap) return;
-    const maplibregl = await import('maplibre-gl');
-    if (!compareMode || !compareContainer || !map) return;
-    compareMap = new maplibregl.Map({
-      container: compareContainer,
-      center: map.getCenter(),
-      zoom: map.getZoom(),
-      bearing: map.getBearing(),
-      pitch: map.getPitch(),
-      style: { version: 8, sources: {}, layers: [] },
-      attributionControl: false,
-      interactive: false
-    });
-    compareMap.on('load', () => syncCompareHistoricalLayer());
+    if (!map || compareMap || creatingCompareMap) return;
+    creatingCompareMap = true;
+    try {
+      const maplibregl = await import('maplibre-gl');
+      if (!compareMode || !compareContainer || !map || compareMap) return;
+      compareMap = new maplibregl.Map({
+        container: compareContainer,
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+        pitch: map.getPitch(),
+        style: { version: 8, sources: {}, layers: [] },
+        attributionControl: false,
+        interactive: false
+      });
+      compareMap.on('load', () => syncCompareHistoricalLayer());
+    } finally {
+      creatingCompareMap = false;
+    }
   }
 
   function onDividerPointerDown(event: PointerEvent) {
@@ -318,6 +325,9 @@
     updateMapUrl();
   });
   $effect(() => { showBuildings; showHeritage; showFaces; showWorldHeritage; showArchaeology; showMunicipalityHistory; showMinuutplans; showHistorical; background; syncLayerVisibility(); updateMapUrl(); });
+  $effect(() => {
+    if (compareMode && (!showHistorical || !selectedHistoricalMapId)) compareMode = false;
+  });
   $effect(() => {
     if (compareMode) void createCompareMap();
     else destroyCompareMap();
@@ -556,6 +566,7 @@
       onpointerdown={onDividerPointerDown}
       onpointermove={onDividerPointerMove}
       onpointerup={onDividerPointerUp}
+      onpointercancel={onDividerPointerUp}
       onkeydown={(event) => {
         if (event.key === 'ArrowLeft') comparePosition = Math.max(5, comparePosition - 2);
         if (event.key === 'ArrowRight') comparePosition = Math.min(95, comparePosition + 2);

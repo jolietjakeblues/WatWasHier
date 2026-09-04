@@ -276,6 +276,27 @@ test('schuifvergelijking toont een sleepbare vergelijking tussen oud en nieuw', 
   await expect(divider).not.toBeVisible();
 });
 
+test('schuifvergelijking sluit zichzelf als de Waterstaatskaart wordt uitgezet', async ({ page }) => {
+  const data = context();
+  data.historical.maps = [
+    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
+  ];
+  await mockIiifInfoAndWatchTileRequests(page);
+  await prepare(page, data);
+  await page.getByRole('button', { name: 'Open kaartlagen' }).click();
+
+  await page.getByLabel('Schuifvergelijking oud/nieuw').check();
+  const divider = page.locator('.compare-divider');
+  await expect(divider).toBeVisible();
+
+  // Waterstaatskaart uitzetten mag de vergelijking niet als vastgelopen, niet-uitzetbare
+  // overlay laten hangen — de checkbox wordt disabled zodra showHistorical false is, dus
+  // compareMode moet zichzelf resetten in plaats van te wachten op een klik die niet meer kan.
+  await page.getByLabel('Waterstaatskaart').uncheck();
+  await expect(divider).not.toBeVisible();
+  await expect(page.getByLabel('Schuifvergelijking oud/nieuw')).not.toBeChecked();
+});
+
 test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {
   let requests = 0;
   await page.addInitScript(() => localStorage.setItem('watwashier:context-help:0.4', 'seen'));

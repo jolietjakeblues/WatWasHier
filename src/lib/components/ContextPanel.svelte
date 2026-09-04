@@ -37,12 +37,18 @@
   let selectedTimelineIndex = $derived(
     Math.max(0, timelineMaps.findIndex((map) => map.id === selectedHistoricalMapId))
   );
-  let selectedBuildingKey = $derived(
-    selectedBuilding ? String(selectedBuilding.properties?.identificatie ?? selectedBuilding.id) : null
-  );
+  // null means "no reliable key" (no selection, or the selected building has neither
+  // identificatie nor id) — buildingKey() treats that as never matching, so a building
+  // without an id is never mistaken for a different building that also lacks one.
+  let selectedBuildingKey = $derived(buildingKey(selectedBuilding));
   let unavailableSourceCount = $derived(
     context?.sourceStatus.filter((source) => source.status === 'unavailable').length ?? 0
   );
+
+  function buildingKey(building: BuildingFeature | null): string | null {
+    const key = building?.properties?.identificatie ?? building?.id;
+    return key === undefined || key === null ? null : String(key);
+  }
 
   function propertyLabel(name: string): string {
     return name.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
@@ -171,11 +177,11 @@
 
     <div class="detail-list">
       <details class="data-details">
-        <summary><span>Actuele PDOK-data</span><small>{context.current.buildings.features.length} panden</small></summary>
+        <summary><h2><span>Actuele PDOK-data</span><small>{context.current.buildings.features.length} panden</small></h2></summary>
         {#if context.current.buildings.features.length}
           <p class="muted">Hieronder staan de eerste 10 panden uit het geselecteerde gebied. De groene contouren staan op de kaart.</p>
           <div class="buildings">
-            {#each context.current.buildings.features.filter((building) => String(building.properties?.identificatie ?? building.id) !== selectedBuildingKey).slice(0, 10) as building}
+            {#each context.current.buildings.features.filter((building) => selectedBuildingKey === null || buildingKey(building) !== selectedBuildingKey).slice(0, 10) as building}
               <details>
                 <summary>
                   Pand {String(building.properties?.identificatie ?? building.id ?? 'zonder ID')}
@@ -213,7 +219,7 @@
       </details>
 
       <details class="data-details">
-        <summary><span>Erfgoed</span><small>{context.heritage.status === 'connected' ? `${context.heritage.objects.features.length} objecten` : 'niet bereikbaar'}</small></summary>
+        <summary><h2><span>Erfgoed</span><small>{context.heritage.status === 'connected' ? `${context.heritage.objects.features.length} objecten` : 'niet bereikbaar'}</small></h2></summary>
         {#if context.heritage.status === 'connected'}
           <ul class="heritage-counts">
             <li>Rijksmonumenten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'monument').length}</li>
@@ -235,7 +241,7 @@
       </details>
 
       <details class="data-details">
-        <summary><span>Archeologie</span><small>{context.archaeology.status === 'connected' ? `${context.archaeology.objects.features.length} ankers` : 'niet bereikbaar'}</small></summary>
+        <summary><h2><span>Archeologie</span><small>{context.archaeology.status === 'connected' ? `${context.archaeology.objects.features.length} ankers` : 'niet bereikbaar'}</small></h2></summary>
         {#if context.archaeology.status === 'connected'}
           <ul class="heritage-counts">
             <li>Terreinen: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischTerrein').length}</li>
@@ -250,7 +256,7 @@
       </details>
 
       <details class="data-details">
-        <summary><span>Gemeentegeschiedenis</span><small>{context.municipalityHistory.periods.length} periodes</small></summary>
+        <summary><h2><span>Gemeentegeschiedenis</span><small>{context.municipalityHistory.periods.length} periodes</small></h2></summary>
         {#if context.municipalityHistory.periods.length}
           <p class="muted">Historische gemeentegrenzen van {context.municipalityHistory.placeName} staan als gekleurde contouren op de kaart.</p>
           <ul class="heritage-counts">
@@ -264,7 +270,7 @@
       </details>
 
       <details class="data-details">
-        <summary><span>Kadastrale minuutplans</span><small>{context.minuutplans.status === 'connected' ? `${context.minuutplans.sheets.length} bladen` : 'niet bereikbaar'}</small></summary>
+        <summary><h2><span>Kadastrale minuutplans</span><small>{context.minuutplans.status === 'connected' ? `${context.minuutplans.sheets.length} bladen` : 'niet bereikbaar'}</small></h2></summary>
         {#if context.minuutplans.status === 'connected'}
           {#if context.minuutplans.sheets.length}
             <p class="muted">Bladgrenzen uit de kadastrale minuutplans (1811–1832) staan als contouren op de kaart.</p>
@@ -282,7 +288,7 @@
       </details>
 
       <details class="data-details">
-        <summary><span>Bronnen</span><small>{unavailableSourceCount > 0 ? `${unavailableSourceCount} niet bereikbaar` : 'alle beschikbaar'}</small></summary>
+        <summary><h2><span>Bronnen</span><small>{unavailableSourceCount > 0 ? `${unavailableSourceCount} niet bereikbaar` : 'alle beschikbaar'}</small></h2></summary>
         <ul class="source-status" aria-label="Status van databronnen">
           {#each context.sourceStatus as source}
             <li class:unavailable={source.status === 'unavailable'}>
@@ -409,6 +415,16 @@
   .data-details summary::-webkit-details-marker { display: none; }
   .data-details summary::after { content: '›'; flex: none; transform: rotate(90deg); color: #8da099; font-size: 1.1rem; }
   .data-details[open] summary::after { transform: rotate(-90deg); }
+  .data-details summary h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 1;
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
   .data-details summary small { color: #66716d; font-weight: 500; }
   .data-details > :not(summary) { margin: 0 13px 13px; }
   .data-details > p:first-of-type, .data-details > ul:first-of-type { margin-top: 2px; }
