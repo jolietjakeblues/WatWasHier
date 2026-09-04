@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, rcePopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, rcePopup, toponymPopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -91,5 +91,11 @@ describe('feature popups', () => {
     expect(html).toContain('Sectie M, blad 01');
     expect(html).toContain('Zwollekerspel');
     expect(html).toContain('Bekijk de kaart bij RCE');
+  });
+
+  it('toont naam en Kloeke-code van een historische plaatsnaam', () => {
+    const html = toponymPopup({ label: 'Mastenbroek', kloekeCode: 'F094p' });
+    expect(html).toContain('Mastenbroek');
+    expect(html).toContain('F094p');
   });
 });

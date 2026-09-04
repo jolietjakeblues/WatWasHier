@@ -30,6 +30,11 @@ export function minuutplanPopup(properties: GeoJsonProperties): string {
   return `<div class="feature-card feature-card--minuutplan"><span class="feature-card__type">Kadastrale minuutplan</span><h3>Sectie ${escapeHtml(p.section ?? '?')}, blad ${escapeHtml(p.sheet ?? '?')}</h3><dl>${row('Gemeente (1832)', p.municipality)}${row('Provincie', p.province)}${row('Kaartcode', p.code)}</dl><p class="feature-card__description">Kadastrale minuutplans, 1811&ndash;1832.</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Bekijk de kaart bij RCE</a>` : ''}</div>`;
 }
 
+export function toponymPopup(properties: GeoJsonProperties): string {
+  const p = properties ?? {};
+  return `<div class="feature-card feature-card--toponym"><span class="feature-card__type">Historische plaatsnaam</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Kloeke-code', p.kloekeCode)}</dl><p class="feature-card__description">Kloekecodes zijn een historische naamgeving voor plaatsen en buurtschappen, via RCE ErfGeo.</p></div>`;
+}
+
 export function archaeologyPopup(properties: GeoJsonProperties, details?: ArchaeologyDetails | null, loading = false): string {
   const p = properties ?? {};
   const labels: Record<string, string> = { ArcheologischTerrein: 'Archeologisch terrein', ArcheologischOnderzoeksgebied: 'Archeologisch onderzoeksgebied', Vondstlocatie: 'Vondstlocatie' };

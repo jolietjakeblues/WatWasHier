@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseErfGeoNames, parseMunicipalityHistory } from './erfgeo';
+import { parseErfGeoNames, parseMunicipalityHistory, parseToponymBindings } from './erfgeo';
 
 describe('ErfGeo-namen', () => {
   it('laat de huidige naam weg en markeert alternatieven als mogelijke koppeling', () => {
@@ -37,6 +37,31 @@ describe('gemeentegeschiedenis', () => {
       { place: { value: 'https://example.test/zonder-geometrie' }, begin: { value: '1900' } },
       { place: { value: 'https://example.test/kapotte-wkt' }, begin: { value: '1900' }, wkt: { value: 'LINESTRING(0 0, 1 1)' } }
     ], 'Nergenshuizen');
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe('kloekecodes', () => {
+  it('parseert plaatsnaam, Kloeke-code en coördinaten', () => {
+    const result = parseToponymBindings([
+      {
+        s: { value: 'https://example.test/kloekecodes/1' },
+        title: { value: 'Mastenbroek' },
+        id: { value: 'F094p' },
+        lon: { value: '6.0233' },
+        lat: { value: '52.5712' }
+      }
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ label: 'Mastenbroek', kloekeCode: 'F094p', lon: 6.0233, lat: 52.5712 });
+  });
+
+  it('slaat records zonder naam, code of geldige coördinaten over', () => {
+    const result = parseToponymBindings([
+      { s: { value: 'https://example.test/kloekecodes/2' }, id: { value: 'F095a' }, lon: { value: '6.01' }, lat: { value: '52.5' } },
+      { s: { value: 'https://example.test/kloekecodes/3' }, title: { value: 'Zonder code' }, lon: { value: '6.01' }, lat: { value: '52.5' } },
+      { s: { value: 'https://example.test/kloekecodes/4' }, title: { value: 'Zonder coördinaat' }, id: { value: 'F096a' } }
+    ]);
     expect(result).toHaveLength(0);
   });
 });

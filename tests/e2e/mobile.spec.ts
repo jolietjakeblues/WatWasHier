@@ -9,6 +9,7 @@ const data: LandscapeContext = {
   archaeology: { status: 'connected', objects: { type: 'FeatureCollection', features: [] } },
   municipalityHistory: { placeName: null, periods: [] },
   minuutplans: { status: 'connected', sheets: [] },
+  toponyms: { status: 'connected', items: [] },
   assertions: [], provenance: [], warnings: [],
   sourceStatus: [
     { source: 'pdok-bag', label: 'PDOK BAG', status: 'available', checkedAt: '2026-09-01T08:00:00Z' },

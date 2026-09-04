@@ -135,6 +135,7 @@
         <div class="overview-tile"><span>{context.archaeology.status === 'connected' ? context.archaeology.objects.features.length : '–'}</span><small>Archeologie</small></div>
         <div class="overview-tile"><span>{context.municipalityHistory.periods.length}</span><small>Gemeente&shy;geschiedenis</small></div>
         <div class="overview-tile"><span>{context.minuutplans.status === 'connected' ? context.minuutplans.sheets.length : '–'}</span><small>Minuut&shy;plans</small></div>
+        <div class="overview-tile"><span>{context.toponyms.status === 'connected' ? context.toponyms.items.length : '–'}</span><small>Plaats&shy;namen</small></div>
         <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
       </div>
     </section>
@@ -284,6 +285,24 @@
           {/if}
         {:else}
           <p class="muted">De minuutplan-bron kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Historische plaatsnamen</span><small>{context.toponyms.status === 'connected' ? `${context.toponyms.items.length} namen` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.toponyms.status === 'connected'}
+          {#if context.toponyms.items.length}
+            <p class="muted">Kloekecodes: historische namen van plaatsen en buurtschappen, sommige inmiddels verdwenen of vergeten. Als paarse punten op de kaart.</p>
+            <ul class="heritage-counts">
+              {#each context.toponyms.items as toponym}
+                <li>{toponym.label} <small class="muted">({toponym.kloekeCode})</small></li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie zijn geen historische plaatsnamen gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De kloekecodes-bron kon niet worden bereikt.</p>
         {/if}
       </details>
 

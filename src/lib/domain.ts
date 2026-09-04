@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -118,6 +118,14 @@ export interface MinuutplanSheet {
   geometry: Geometry;
 }
 
+export interface Toponym {
+  id: string;
+  label: string;
+  kloekeCode: string;
+  lon: number;
+  lat: number;
+}
+
 export interface LandscapeContext {
   location: LocationSelection;
   current: {
@@ -144,6 +152,10 @@ export interface LandscapeContext {
   minuutplans: {
     status: 'not-connected' | 'connected';
     sheets: MinuutplanSheet[];
+  };
+  toponyms: {
+    status: 'not-connected' | 'connected';
+    items: Toponym[];
   };
   assertions: Assertion[];
   provenance: Provenance[];
