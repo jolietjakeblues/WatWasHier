@@ -47,5 +47,11 @@ export function parseWkt(wkt: string): Geometry | null {
   if (/^POLYGON/i.test(clean)) {
     return { type: 'Polygon', coordinates: parseGroup(body, { i: 0 }) as Position[][] };
   }
+  if (/^MULTILINESTRING/i.test(clean)) {
+    return { type: 'MultiLineString', coordinates: parseGroup(body, { i: 0 }) as Position[][] };
+  }
+  if (/^LINESTRING/i.test(clean)) {
+    return { type: 'LineString', coordinates: parseGroup(body, { i: 0 }) as Position[] };
+  }
   return null;
 }

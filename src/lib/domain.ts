@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -135,6 +135,13 @@ export interface DisappearedVillage {
   lat: number;
 }
 
+export interface DefenceLine {
+  id: string;
+  label: string;
+  period: string | null;
+  geometry: Geometry;
+}
+
 export interface Perceel {
   id: string;
   gemeente: string;
@@ -182,6 +189,10 @@ export interface LandscapeContext {
   disappearedVillages: {
     status: 'not-connected' | 'connected';
     items: DisappearedVillage[];
+  };
+  defenceLines: {
+    status: 'not-connected' | 'connected';
+    items: DefenceLine[];
   };
   assertions: Assertion[];
   provenance: Provenance[];

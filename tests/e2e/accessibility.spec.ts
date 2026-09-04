@@ -13,6 +13,7 @@ test.beforeEach(async ({ page }) => {
     toponyms: { status: 'connected', items: [] },
     percelen: { status: 'connected', items: [] },
     disappearedVillages: { status: 'connected', items: [] },
+    defenceLines: { status: 'connected', items: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

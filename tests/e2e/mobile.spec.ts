@@ -12,6 +12,7 @@ const data: LandscapeContext = {
   toponyms: { status: 'connected', items: [] },
   percelen: { status: 'connected', items: [] },
   disappearedVillages: { status: 'connected', items: [] },
+  defenceLines: { status: 'connected', items: [] },
   assertions: [], provenance: [], warnings: [],
   sourceStatus: [
     { source: 'pdok-bag', label: 'PDOK BAG', status: 'available', checkedAt: '2026-09-01T08:00:00Z' },

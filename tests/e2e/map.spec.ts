@@ -73,6 +73,7 @@ function context(buildings: Feature[] = []): LandscapeContext {
     toponyms: { status: 'connected', items: [] },
     percelen: { status: 'connected', items: [] },
     disappearedVillages: { status: 'connected', items: [] },
+    defenceLines: { status: 'connected', items: [] },
     assertions: [{ id: 'bag', type: 'source_fact', statement: `PDOK leverde ${buildings.length} BAG-panden.`, sourceIds: ['source-pdok-bag'] }],
     provenance: [{ id: 'source-pdok-bag', source: 'pdok-bag', title: 'BAG', url: 'https://example.test/bag', retrievedAt: '2026-08-31T12:00:00Z' }],
     sourceStatus: [
@@ -138,7 +139,7 @@ test('lagen en historische doorzichtigheid worden in de URL bewaard', async ({ p
 
 test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => {
   await prepare(page);
-  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&toponiemen=0&percelen=0&verdwenendorpen=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
+  await page.goto('/?lon=6.066800&lat=52.495000&zoom=14&background=none&bag=0&gemeenten=0&minuutplans=0&toponiemen=0&percelen=0&verdwenendorpen=0&linies=0&history=1&opacity=0.40&radius=500&heritageRadius=1200');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Open kaartlagen' }).click();
   await expect(page.getByLabel('Geen achtergrond')).toBeChecked();
@@ -148,6 +149,7 @@ test('deelbare URL herstelt kaartlagen en doorzichtigheid', async ({ page }) => 
   await expect(page.getByLabel('Historische plaatsnamen')).not.toBeChecked();
   await expect(page.getByLabel('Kadastrale percelen')).not.toBeChecked();
   await expect(page.getByLabel('Verdwenen dorpen')).not.toBeChecked();
+  await expect(page.getByLabel('Historische linies')).not.toBeChecked();
   await expect(page.getByText('Doorzichtigheid: 40%')).toBeVisible();
   await expect(page.getByLabel('Zoekstraal plekcontext')).toHaveValue('500');
   await expect(page.getByLabel('Zoekstraal rijksmonumenten')).toHaveValue('1200');
@@ -266,6 +268,25 @@ test('verdwenen dorpen tonen een klikbaar punt met jaartal en bron', async ({ pa
   await expect(card).toContainText('Westkerke');
   await expect(card).toContainText('1375');
   await expect(card).toContainText('Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152');
+});
+
+test('historische linies tonen een klikbare lijn met periode', async ({ page }) => {
+  const data = context();
+  data.defenceLines = {
+    status: 'connected',
+    items: [
+      {
+        id: 'https://example.test/linies/kazematlinie', label: 'Kazematlinie Oldeneel-Haerst', period: 'WO2',
+        // Verticale lijn op exact de lengtegraad van het kaartcentrum, zelfde truc als de gemeentegeschiedenis-test.
+        geometry: { type: 'MultiLineString', coordinates: [[[point.lon, 52.3], [point.lon, 52.7]]] }
+      }
+    ]
+  };
+  await prepare(page, data);
+  await clickCenterUntilPopupVisible(page, '.feature-card--linie');
+  const card = page.locator('.feature-card--linie');
+  await expect(card).toContainText('Kazematlinie Oldeneel-Haerst');
+  await expect(card).toContainText('WO2');
 });
 
 test('historische kaartselectie bewaart jaar en editie in de URL', async ({ page }) => {

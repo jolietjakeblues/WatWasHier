@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, disappearedVillagePopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, defenceLinePopup, disappearedVillagePopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -124,5 +124,11 @@ describe('feature popups', () => {
     expect(html).toContain('Westkerke');
     expect(html).toContain('1375');
     expect(html).toContain('Bert Stulp, Verdwenen Dorpen, boek 5, blz. 152');
+  });
+
+  it('toont naam en periode van een historische linie', () => {
+    const html = defenceLinePopup({ label: 'Kazematlinie Oldeneel-Haerst', period: 'WO2' });
+    expect(html).toContain('Kazematlinie Oldeneel-Haerst');
+    expect(html).toContain('WO2');
   });
 });

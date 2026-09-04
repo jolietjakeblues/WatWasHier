@@ -40,6 +40,11 @@ export function disappearedVillagePopup(properties: GeoJsonProperties): string {
   return `<div class="feature-card feature-card--village"><span class="feature-card__type">Verdwenen dorp</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Laatst genoemd', p.date)}</dl><p class="feature-card__description">${p.source ? escapeHtml(p.source) : 'Bron: Bert Stulp, Verdwenen Dorpen'}</p></div>`;
 }
 
+export function defenceLinePopup(properties: GeoJsonProperties): string {
+  const p = properties ?? {};
+  return `<div class="feature-card feature-card--linie"><span class="feature-card__type">Historische linie</span><h3>${escapeHtml(p.label ?? '?')}</h3><dl>${row('Periode', p.period)}</dl><p class="feature-card__description">Historische verdedigingslinie, via de RCE CHO-linked-data.</p></div>`;
+}
+
 function formatArea(squareMeters: unknown): string | null {
   const value = typeof squareMeters === 'number' ? squareMeters : Number(squareMeters);
   if (!Number.isFinite(value)) return null;

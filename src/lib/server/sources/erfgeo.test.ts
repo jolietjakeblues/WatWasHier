@@ -35,7 +35,7 @@ describe('gemeentegeschiedenis', () => {
   it('slaat records zonder (geldige) geometrie over', () => {
     const result = parseMunicipalityHistory([
       { place: { value: 'https://example.test/zonder-geometrie' }, begin: { value: '1900' } },
-      { place: { value: 'https://example.test/kapotte-wkt' }, begin: { value: '1900' }, wkt: { value: 'LINESTRING(0 0, 1 1)' } }
+      { place: { value: 'https://example.test/kapotte-wkt' }, begin: { value: '1900' }, wkt: { value: 'TRIANGLE(0 0, 1 1, 2 2)' } }
     ], 'Nergenshuizen');
     expect(result).toHaveLength(0);
   });

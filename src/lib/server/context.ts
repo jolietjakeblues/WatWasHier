@@ -6,6 +6,7 @@ import { getArchaeology } from './sources/archaeology';
 import { getDisappearedVillages, getMunicipalityHistoryForLocation, getToponyms } from './sources/erfgeo';
 import { getMinuutplanSheets } from './sources/minuutplans';
 import { getPercelen } from './sources/kadaster-percelen';
+import { getDefenceLines } from './sources/linies';
 import { bboxAroundPoint } from '$lib/geo';
 import { SourceFetchError } from './source-fetch';
 
@@ -43,7 +44,7 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult, percelenResult, disappearedVillagesResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult, percelenResult, disappearedVillagesResult, defenceLinesResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
@@ -52,7 +53,8 @@ export async function buildLandscapeContext(
     getMinuutplanSheets(location.bbox),
     getToponyms(location.bbox),
     getPercelen(location.lon, location.lat, location.bbox),
-    getDisappearedVillages(location.bbox)
+    getDisappearedVillages(location.bbox),
+    getDefenceLines(location.bbox)
   ]);
 
   const buildings =
@@ -96,6 +98,8 @@ export async function buildLandscapeContext(
   if (percelenResult.status === 'rejected') warnings.push(sourceWarning('Kadaster KKG percelen', percelenResult.reason));
   const disappearedVillages = disappearedVillagesResult.status === 'fulfilled' ? disappearedVillagesResult.value : [];
   if (disappearedVillagesResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo verdwenen dorpen', disappearedVillagesResult.reason));
+  const defenceLines = defenceLinesResult.status === 'fulfilled' ? defenceLinesResult.value : [];
+  if (defenceLinesResult.status === 'rejected') warnings.push(sourceWarning('RCE CHO linies', defenceLinesResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -186,6 +190,16 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (defenceLines.length > 0) {
+    provenance.push({
+      id: 'source-rce-cho-linies',
+      source: 'rce-cho-linies',
+      title: 'RCE CHO - Historische verdedigingslinies',
+      url: 'https://linkeddata.cultureelerfgoed.nl/graph/linies',
+      retrievedAt: now()
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
@@ -196,7 +210,8 @@ export async function buildLandscapeContext(
     statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult),
     statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult),
     statusFor('kadaster-kkg-percelen', 'Kadaster KKG percelen', percelenResult),
-    statusFor('erfgeo-verdwenendorpen', 'ErfGeo verdwenen dorpen', disappearedVillagesResult)
+    statusFor('erfgeo-verdwenendorpen', 'ErfGeo verdwenen dorpen', disappearedVillagesResult),
+    statusFor('rce-cho-linies', 'RCE CHO linies', defenceLinesResult)
   ];
 
   return {
@@ -232,6 +247,10 @@ export async function buildLandscapeContext(
     disappearedVillages: {
       status: disappearedVillagesResult.status === 'fulfilled' ? 'connected' : 'not-connected',
       items: disappearedVillages
+    },
+    defenceLines: {
+      status: defenceLinesResult.status === 'fulfilled' ? 'connected' : 'not-connected',
+      items: defenceLines
     },
     assertions: [
       {
