@@ -86,7 +86,7 @@ async function prepare(page: Page, data = context()) {
   await page.route('**/api/context?**', (route) => route.fulfill({ json: data }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Wat was hier?' })).toBeVisible();
-  await expect(page.getByText('PDOK BAG', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overzicht' })).toBeVisible();
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
 }
 
@@ -113,8 +113,9 @@ test('klik op een BAG-pand toont de gebouwgegevens', async ({ page }) => {
     geometry: { type: 'Polygon', coordinates: [[[6.04,52.47],[6.10,52.47],[6.10,52.52],[6.04,52.52],[6.04,52.47]]] }
   };
   await prepare(page, context([building]));
+  await page.getByText('Actuele PDOK-data', { exact: true }).click();
   await page.getByText('Pand 0193100000001590', { exact: true }).click();
-  const buildingDetails = page.locator('details').filter({ hasText: 'Pand 0193100000001590' });
+  const buildingDetails = page.locator('details').filter({ hasText: 'Pand 0193100000001590' }).last();
   await expect(buildingDetails).toContainText('Bouwjaar');
   await expect(buildingDetails).toContainText('1930');
 });
@@ -241,6 +242,8 @@ test('toont een bronstoring zonder de overige resultaten te verbergen', async ({
   await page.goto('/');
   await expect(page.locator('[data-map-ready="true"]')).toBeVisible();
   await expect(page.getByText('RCE-erfgoed antwoordde niet op tijd. Andere bronnen blijven beschikbaar.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overzicht' })).toBeVisible();
+  await page.getByText('Bronnen', { exact: true }).click();
   await expect(page.getByText('PDOK BAG', { exact: true })).toBeVisible();
   await expect(page.getByText('Tijdelijk niet beschikbaar', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Bronnen opnieuw proberen' }).click();
