@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
     municipalityHistory: { placeName: null, periods: [] },
     minuutplans: { status: 'connected', sheets: [] },
     toponyms: { status: 'connected', items: [] },
+    percelen: { status: 'connected', items: [] },
     assertions: [], provenance: [], warnings: [], sourceStatus: []
   } }));
   await page.goto('/');

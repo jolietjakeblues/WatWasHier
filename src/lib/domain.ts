@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;
@@ -126,6 +126,15 @@ export interface Toponym {
   lat: number;
 }
 
+export interface Perceel {
+  id: string;
+  gemeente: string;
+  sectie: string;
+  perceelnummer: string;
+  areaSquareMeters: number | null;
+  geometry: Geometry;
+}
+
 export interface LandscapeContext {
   location: LocationSelection;
   current: {
@@ -156,6 +165,10 @@ export interface LandscapeContext {
   toponyms: {
     status: 'not-connected' | 'connected';
     items: Toponym[];
+  };
+  percelen: {
+    status: 'not-connected' | 'connected';
+    items: Perceel[];
   };
   assertions: Assertion[];
   provenance: Provenance[];

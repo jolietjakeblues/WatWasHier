@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, rcePopup, toponymPopup } from './feature-popup';
+import { archaeologyPopup, bagPopup, escapeHtml, minuutplanPopup, municipalityHistoryPopup, perceelPopup, rcePopup, toponymPopup } from './feature-popup';
 
 const emptyDetails = {
   monumentNumber: '1', choNumber: null, registeredAt: null, address: null,
@@ -97,5 +97,16 @@ describe('feature popups', () => {
     const html = toponymPopup({ label: 'Mastenbroek', kloekeCode: 'F094p' });
     expect(html).toContain('Mastenbroek');
     expect(html).toContain('F094p');
+  });
+
+  it('toont gemeente, sectie, perceelnummer en oppervlakte van een kadastraal perceel', () => {
+    const html = perceelPopup({ gemeente: 'Zwolle', sectie: 'M', perceelnummer: '4370', areaSquareMeters: 293 });
+    expect(html).toContain('Zwolle M 4370');
+    expect(html).toContain('293 m²');
+  });
+
+  it('toont de oppervlakte van een groot perceel in hectare', () => {
+    const html = perceelPopup({ gemeente: 'Zwolle', sectie: 'M', perceelnummer: '1', areaSquareMeters: 218230 });
+    expect(html).toContain('21,82 ha');
   });
 });
