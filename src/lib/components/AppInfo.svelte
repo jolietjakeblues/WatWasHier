@@ -30,11 +30,7 @@
 
         <section>
           <h3>Hoe lees je de resultaten?</h3>
-          <dl class="assertion-types">
-            <div><dt>Bronfeit</dt><dd>Komt rechtstreeks uit een bron.</dd></div>
-            <div><dt>Observatie</dt><dd>Wordt uit één of meer bronnen berekend.</dd></div>
-            <div><dt>Hypothese</dt><dd>Is een herkenbaar gelabelde interpretatie.</dd></div>
-          </dl>
+          <p>Overzicht toont de aantallen per bron in één oogopslag. Elke sectie daaronder is per bron in te klappen; Bronnen laat zien welke bronnen beschikbaar waren op het moment van ophalen.</p>
         </section>
 
         <section>
@@ -83,10 +79,6 @@
   h3 { margin: 0 0 9px; font-size: 1rem; }
   p { margin: 0; color: #53615c; line-height: 1.55; }
   a { color: #0b6f60; font-weight: 700; }
-  .assertion-types { display: grid; gap: 9px; margin: 0; }
-  .assertion-types div { display: grid; grid-template-columns: 95px 1fr; gap: 10px; }
-  .assertion-types dt { color: #0b5f50; font-weight: 800; }
-  .assertion-types dd { margin: 0; color: #53615c; }
   .sources { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
   .sources li { padding: 12px; border: 1px solid #dce3df; border-radius: 9px; background: #f4f8f6; }
   .sources strong, .sources small, .sources a { display: block; overflow-wrap: anywhere; }
@@ -94,5 +86,5 @@
   .sources a { margin-top: 7px; }
   .muted { color: #69736f; }
   .alpha-note { margin-top: 22px; padding: 12px 13px; border-left: 4px solid #d7b969; background: #fff7dd; color: #4f462c; }
-  @media (max-width: 520px) { .info-button { right: 70px; bottom: 16px; width: 44px; height: 44px; } .backdrop { align-items: end; padding: 10px; } .info-dialog { max-height: calc(100dvh - 20px); border-radius: 15px; } header { padding: 18px; } .content { padding: 0 18px 20px; } .assertion-types div { grid-template-columns: 82px 1fr; } }
+  @media (max-width: 520px) { .info-button { right: 70px; bottom: 16px; width: 44px; height: 44px; } .backdrop { align-items: end; padding: 10px; } .info-dialog { max-height: calc(100dvh - 20px); border-radius: 15px; } header { padding: 18px; } .content { padding: 0 18px 20px; } }
 </style>
