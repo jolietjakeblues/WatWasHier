@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BuildingFeature, LandscapeContext, AssertionType } from '$lib/domain';
+  import type { BuildingFeature, LandscapeContext } from '$lib/domain';
 
   let {
     context,
@@ -25,12 +25,6 @@
     onretry: () => void;
   } = $props();
 
-  const labels: Record<AssertionType, string> = {
-    source_fact: 'Bronfeit',
-    observation: 'Observatie',
-    hypothesis: 'Hypothese'
-  };
-
   const ignoredBuildingProperties = new Set([
     'identificatie',
     'rdf_seealso',
@@ -42,6 +36,12 @@
   );
   let selectedTimelineIndex = $derived(
     Math.max(0, timelineMaps.findIndex((map) => map.id === selectedHistoricalMapId))
+  );
+  let selectedBuildingKey = $derived(
+    selectedBuilding ? String(selectedBuilding.properties?.identificatie ?? selectedBuilding.id) : null
+  );
+  let unavailableSourceCount = $derived(
+    context?.sourceStatus.filter((source) => source.status === 'unavailable').length ?? 0
   );
 
   function propertyLabel(name: string): string {
@@ -79,6 +79,17 @@
   {#if error}
     <div class="error"><span>{error}</span><button type="button" onclick={onretry}>Opnieuw proberen</button></div>
   {:else if context}
+    {#if context.warnings.length}
+      <div class="warning-banner" role="alert">
+        {#each context.warnings as warning}
+          <p class="warning">{warning}</p>
+        {/each}
+        {#if unavailableSourceCount > 0}
+          <button class="retry-button" type="button" onclick={onretry}>Bronnen opnieuw proberen</button>
+        {/if}
+      </div>
+    {/if}
+
     {#if selectedBuilding}
       <section class="selected-building" aria-live="polite">
         <p class="eyebrow">Geselecteerd gebouw</p>
@@ -96,12 +107,7 @@
 
     <section>
       <h2>Locatie</h2>
-      <dl class="coords">
-        <div><dt>Lengtegraad</dt><dd>{context.location.lon.toFixed(6)}</dd></div>
-        <div><dt>Breedtegraad</dt><dd>{context.location.lat.toFixed(6)}</dd></div>
-        <div><dt>Plekcontext</dt><dd>{context.location.radiusMeters} m</dd></div>
-        <div><dt>Rijksmonumenten</dt><dd>{context.location.heritageRadiusMeters} m</dd></div>
-      </dl>
+      <p class="coords-caption">{context.location.lon.toFixed(6)}, {context.location.lat.toFixed(6)}</p>
       <div class="radius-controls">
         <label>
           <span><strong>Plekcontext</strong><output>{radiusMeters} m</output></span>
@@ -116,49 +122,14 @@
     </section>
 
     <section>
-      <h2>Actuele PDOK-data</h2>
-      <p class="data-summary">
-        <strong>{context.current.buildings.features.length}</strong> BAG-panden opgehaald.
-        De groene contouren staan op de kaart.
-      </p>
-      {#if context.current.buildings.features.length}
-        <p class="muted">Hieronder staan de eerste 10 panden uit het geselecteerde gebied.</p>
-        <div class="buildings">
-          {#each context.current.buildings.features.slice(0, 10) as building}
-            <details>
-              <summary>
-                Pand {String(building.properties?.identificatie ?? building.id ?? 'zonder ID')}
-              </summary>
-              <dl class="building-data">
-                <div>
-                  <dt>Bouwjaar</dt>
-                  <dd>{String(building.properties?.bouwjaar ?? 'Onbekend')}</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>{String(building.properties?.status ?? 'Onbekend')}</dd>
-                </div>
-                <div>
-                  <dt>Gebruiksdoel</dt>
-                  <dd>{String(building.properties?.gebruiksdoel ?? 'Onbekend')}</dd>
-                </div>
-                <div>
-                  <dt>Verblijfsobjecten</dt>
-                  <dd>{String(building.properties?.aantal_verblijfsobjecten ?? 'Onbekend')}</dd>
-                </div>
-              </dl>
-              {#if building.properties?.rdf_seealso}
-                <a
-                  class="data-link"
-                  href={String(building.properties.rdf_seealso)}
-                  target="_blank"
-                  rel="noreferrer">Open BAG-resource</a
-                >
-              {/if}
-            </details>
-          {/each}
-        </div>
-      {/if}
+      <h2>Overzicht</h2>
+      <div class="overview-grid">
+        <div class="overview-tile"><span>{context.current.buildings.features.length}</span><small>Panden</small></div>
+        <div class="overview-tile"><span>{context.heritage.status === 'connected' ? context.heritage.objects.features.length : '–'}</span><small>Erfgoed</small></div>
+        <div class="overview-tile"><span>{context.archaeology.status === 'connected' ? context.archaeology.objects.features.length : '–'}</span><small>Archeologie</small></div>
+        <div class="overview-tile"><span>{context.municipalityHistory.periods.length}</span><small>Gemeente&shy;geschiedenis</small></div>
+        <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
+      </div>
     </section>
 
     <section>
@@ -197,89 +168,114 @@
       {/if}
     </section>
 
-    <section>
-      <h2>Wat weten we nu?</h2>
-      {#each context.assertions as assertion}
-        <article class:type-hypothesis={assertion.type === 'hypothesis'}>
-          <span class="badge">{labels[assertion.type]}</span>
-          <p>{assertion.statement}</p>
-        </article>
-      {/each}
-    </section>
+    <div class="detail-list">
+      <details class="data-details">
+        <summary><span>Actuele PDOK-data</span><small>{context.current.buildings.features.length} panden</small></summary>
+        {#if context.current.buildings.features.length}
+          <p class="muted">Hieronder staan de eerste 10 panden uit het geselecteerde gebied. De groene contouren staan op de kaart.</p>
+          <div class="buildings">
+            {#each context.current.buildings.features.filter((building) => String(building.properties?.identificatie ?? building.id) !== selectedBuildingKey).slice(0, 10) as building}
+              <details>
+                <summary>
+                  Pand {String(building.properties?.identificatie ?? building.id ?? 'zonder ID')}
+                </summary>
+                <dl class="building-data">
+                  <div>
+                    <dt>Bouwjaar</dt>
+                    <dd>{String(building.properties?.bouwjaar ?? 'Onbekend')}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{String(building.properties?.status ?? 'Onbekend')}</dd>
+                  </div>
+                  <div>
+                    <dt>Gebruiksdoel</dt>
+                    <dd>{String(building.properties?.gebruiksdoel ?? 'Onbekend')}</dd>
+                  </div>
+                  <div>
+                    <dt>Verblijfsobjecten</dt>
+                    <dd>{String(building.properties?.aantal_verblijfsobjecten ?? 'Onbekend')}</dd>
+                  </div>
+                </dl>
+                {#if building.properties?.rdf_seealso}
+                  <a
+                    class="data-link"
+                    href={String(building.properties.rdf_seealso)}
+                    target="_blank"
+                    rel="noreferrer">Open BAG-resource</a
+                  >
+                {/if}
+              </details>
+            {/each}
+          </div>
+        {/if}
+      </details>
 
-    <section>
-      <h2>Erfgoed</h2>
-      {#if context.heritage.status === 'connected'}
-        <p><strong>{context.heritage.objects.features.length}</strong> beschermde RCE-objecten gevonden.</p>
-        <ul class="heritage-counts">
-          <li>Rijksmonumenten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'monument').length}</li>
-          <li>Gezichten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'face').length}</li>
-          <li>Werelderfgoed: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'world-heritage').length}</li>
+      <details class="data-details">
+        <summary><span>Erfgoed</span><small>{context.heritage.status === 'connected' ? `${context.heritage.objects.features.length} objecten` : 'niet bereikbaar'}</small></summary>
+        {#if context.heritage.status === 'connected'}
+          <ul class="heritage-counts">
+            <li>Rijksmonumenten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'monument').length}</li>
+            <li>Gezichten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'face').length}</li>
+            <li>Werelderfgoed: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'world-heritage').length}</li>
+          </ul>
+          {#each context.heritage.objects.features.slice(0, 10) as object}
+            <article>
+              <span class="badge">RCE</span>
+              <p>{String(object.properties?.text || object.properties?.namespace || 'Beschermd erfgoedobject')}</p>
+              {#if object.properties?.ci_citation}
+                <a class="data-link" href={String(object.properties.ci_citation)} target="_blank" rel="noreferrer">Open monumentregister</a>
+              {/if}
+            </article>
+          {/each}
+        {:else}
+          <p class="muted">RCE kon voor deze locatie niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><span>Archeologie</span><small>{context.archaeology.status === 'connected' ? `${context.archaeology.objects.features.length} ankers` : 'niet bereikbaar'}</small></summary>
+        {#if context.archaeology.status === 'connected'}
+          <ul class="heritage-counts">
+            <li>Terreinen: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischTerrein').length}</li>
+            <li>Onderzoeksgebieden: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischOnderzoeksgebied').length}</li>
+            <li>Vondstlocaties: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'Vondstlocatie').length}</li>
+          </ul>
+          <p>Direct gekoppelde records zonder eigen kaartgeometrie: <strong>{context.archaeology.objects.features.reduce((total, item) => total + Number(item.properties?.linkedObjectCount ?? 0), 0)}</strong>.</p>
+          <p class="muted">Niet alle archeologie heeft geometrie. De kaart toont alleen ruimtelijke ankers. Complexen, vondsten en grondsporen blijven via RCE-relaties aan die ankers gekoppeld.</p>
+        {:else}
+          <p class="muted">De archeologiebron reageerde niet binnen de tijdslimiet.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><span>Gemeentegeschiedenis</span><small>{context.municipalityHistory.periods.length} periodes</small></summary>
+        {#if context.municipalityHistory.periods.length}
+          <p class="muted">Historische gemeentegrenzen van {context.municipalityHistory.placeName} staan als gekleurde contouren op de kaart.</p>
+          <ul class="heritage-counts">
+            {#each context.municipalityHistory.periods as period}
+              <li>{period.label}</li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="muted">Voor deze locatie is geen gemeentegeschiedenis gevonden.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><span>Bronnen</span><small>{unavailableSourceCount > 0 ? `${unavailableSourceCount} niet bereikbaar` : 'alle beschikbaar'}</small></summary>
+        <ul class="source-status" aria-label="Status van databronnen">
+          {#each context.sourceStatus as source}
+            <li class:unavailable={source.status === 'unavailable'}>
+              <span aria-hidden="true"></span>
+              <strong>{source.label}</strong>
+              <small>{source.status === 'available' ? 'Beschikbaar' : 'Tijdelijk niet beschikbaar'}</small>
+            </li>
+          {/each}
         </ul>
-        {#each context.heritage.objects.features.slice(0, 10) as object}
-          <article>
-            <span class="badge">RCE</span>
-            <p>{String(object.properties?.text || object.properties?.namespace || 'Beschermd erfgoedobject')}</p>
-            {#if object.properties?.ci_citation}
-              <a class="data-link" href={String(object.properties.ci_citation)} target="_blank" rel="noreferrer">Open monumentregister</a>
-            {/if}
-          </article>
-        {/each}
-      {:else}
-        <p class="muted">RCE kon voor deze locatie niet worden bereikt.</p>
-      {/if}
-    </section>
-
-    <section>
-      <h2>Archeologie</h2>
-      {#if context.archaeology.status === 'connected'}
-        <p><strong>{context.archaeology.objects.features.length}</strong> ruimtelijke ankers voor archeologische informatie gevonden.</p>
-        <ul class="heritage-counts">
-          <li>Terreinen: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischTerrein').length}</li>
-          <li>Onderzoeksgebieden: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischOnderzoeksgebied').length}</li>
-          <li>Vondstlocaties: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'Vondstlocatie').length}</li>
-        </ul>
-        <p>Direct gekoppelde records zonder eigen kaartgeometrie: <strong>{context.archaeology.objects.features.reduce((total, item) => total + Number(item.properties?.linkedObjectCount ?? 0), 0)}</strong>.</p>
-        <p class="muted">Niet alle archeologie heeft geometrie. De kaart toont alleen ruimtelijke ankers. Complexen, vondsten en grondsporen blijven via RCE-relaties aan die ankers gekoppeld.</p>
-      {:else}
-        <p class="muted">De archeologiebron reageerde niet binnen de tijdslimiet.</p>
-      {/if}
-    </section>
-
-    <section>
-      <h2>Bronnen</h2>
-      <ul class="source-status" aria-label="Status van databronnen">
-        {#each context.sourceStatus as source}
-          <li class:unavailable={source.status === 'unavailable'}>
-            <span aria-hidden="true"></span>
-            <strong>{source.label}</strong>
-            <small>{source.status === 'available' ? 'Beschikbaar' : 'Tijdelijk niet beschikbaar'}</small>
-          </li>
-        {/each}
-      </ul>
-      {#if context.sourceStatus.some((source) => source.status === 'unavailable')}
-        <button class="retry-button" type="button" onclick={onretry}>Bronnen opnieuw proberen</button>
-      {/if}
-      <ol class="sources">
-        {#each context.provenance as source}
-          <li>
-            <strong>{source.title}</strong>
-            {#if source.url}
-              <a href={source.url} target="_blank" rel="noreferrer">Open bron</a>
-            {/if}
-          </li>
-        {/each}
-      </ol>
-    </section>
-
-    {#if context.warnings.length}
-      <section>
-        <h2>Waarschuwingen</h2>
-        {#each context.warnings as warning}
-          <p class="warning">{warning}</p>
-        {/each}
-      </section>
-    {/if}
+        <p class="muted">Volledige bronvermelding met licenties staat achter de infoknop rechtsonder.</p>
+      </details>
+    </div>
   {:else}
     <div class="status">Klik op de kaart om te beginnen.</div>
   {/if}
@@ -347,10 +343,11 @@
   .error, .warning { background: #fff0eb; color: #7a2f20; }
   .error { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .error button, .retry-button { min-height: 38px; padding: 7px 11px; border: 1px solid #8b3524; border-radius: 8px; background: #fff; color: #7a2f20; font: inherit; font-weight: 700; cursor: pointer; }
-  .retry-button { margin: -7px 0 16px; }
-  .coords { display: grid; gap: 8px; margin: 0; }
-  .coords div { display: flex; justify-content: space-between; gap: 18px; }
-  .radius-controls { display: grid; gap: 13px; margin-top: 16px; padding: 13px; border: 1px solid #dce3df; border-radius: 10px; background: #f8faf8; }
+  .warning-banner { display: grid; gap: 8px; margin-top: 24px; }
+  .warning-banner .warning { margin: 0; }
+  .warning-banner .retry-button { justify-self: start; }
+  .coords-caption { margin: 0 0 14px; color: #66716d; font-variant-numeric: tabular-nums; font-size: 0.86rem; }
+  .radius-controls { display: grid; gap: 13px; padding: 13px; border: 1px solid #dce3df; border-radius: 10px; background: #f8faf8; }
   .radius-controls label { display: grid; gap: 7px; }
   .radius-controls label span { display: flex; justify-content: space-between; gap: 12px; }
   .radius-controls output { color: #0b6f60; font-weight: 750; }
@@ -358,6 +355,10 @@
   .radius-controls small { color: #66716d; line-height: 1.4; }
   dt { color: #66716d; }
   dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
+  .overview-tile { display: grid; gap: 2px; min-width: 0; padding: 10px 11px; border-radius: 9px; background: #f0f8f5; }
+  .overview-tile span { font-size: 1.3rem; font-weight: 750; color: #0b5f50; font-variant-numeric: tabular-nums; }
+  .overview-tile small { color: #53615c; overflow-wrap: anywhere; }
   article {
     margin: 10px 0;
     padding: 13px 14px;
@@ -374,25 +375,37 @@
     text-transform: uppercase;
     color: #0b5f50;
   }
-  .type-hypothesis { border-style: dashed; background: #fffaf0; }
-  .sources { margin: 0; padding-left: 20px; }
-  .source-status { display: grid; gap: 7px; margin: 0 0 16px; padding: 0; list-style: none; }
+  .detail-list { display: grid; gap: 8px; margin-top: 22px; padding-top: 22px; border-top: 1px solid #e3e4de; }
+  .data-details { border: 1px solid #dce3df; border-radius: 10px; background: #f8faf8; }
+  .data-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 13px;
+    cursor: pointer;
+    font-weight: 650;
+    list-style: none;
+  }
+  .data-details summary::-webkit-details-marker { display: none; }
+  .data-details summary::after { content: '›'; flex: none; transform: rotate(90deg); color: #8da099; font-size: 1.1rem; }
+  .data-details[open] summary::after { transform: rotate(-90deg); }
+  .data-details summary small { color: #66716d; font-weight: 500; }
+  .data-details > :not(summary) { margin: 0 13px 13px; }
+  .data-details > p:first-of-type, .data-details > ul:first-of-type { margin-top: 2px; }
+  .source-status { display: grid; gap: 7px; margin: 0 0 10px; padding: 0; list-style: none; }
   .source-status li { display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #eef7f3; }
   .source-status li > span { width: 9px; height: 9px; border-radius: 50%; background: #117865; }
   .source-status li small { color: #53615c; }
   .source-status li.unavailable { background: #fff0eb; }
   .source-status li.unavailable > span { background: #a83c25; }
-  .sources li + li { margin-top: 12px; }
-  .sources strong, .sources a { display: block; }
-  .sources a { margin-top: 3px; color: #0b6f60; }
   .muted { color: #69736f; line-height: 1.5; }
-  .data-summary { margin: 0; line-height: 1.5; }
   .buildings { display: grid; gap: 8px; margin-top: 12px; }
   .buildings details {
     padding: 10px 12px;
     border: 1px solid #dce3df;
     border-radius: 9px;
-    background: #f8faf8;
+    background: #fff;
   }
   .buildings summary { cursor: pointer; font-weight: 650; overflow-wrap: anywhere; }
   .building-data { display: grid; gap: 6px; margin: 12px 0; }
@@ -409,13 +422,13 @@
   .timeline-years button.active i { width: 15px; height: 15px; border-color: #117865; background: #117865; }
   .timeline > input { width: 100%; margin-top: 10px; accent-color: #117865; }
   .selected-map { margin: 14px 0 0; line-height: 1.45; color: #364b44; }
-  .warning { padding: 10px 12px; border-radius: 8px; }
   .heritage-counts { padding-left: 20px; color: #53615c; }
   .selected-building {
     padding: 16px;
     border: 2px solid #117865;
     border-radius: 10px;
     background: #f0f8f5;
+    margin-top: 24px;
   }
   .selected-building h2 { overflow-wrap: anywhere; }
 
