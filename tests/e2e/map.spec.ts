@@ -244,6 +244,38 @@ test('historische kaart vraagt tegelbeelden op zonder dat je hoeft te pannen of 
   ).toBeGreaterThan(0);
 });
 
+test('schuifvergelijking toont een sleepbare vergelijking tussen oud en nieuw', async ({ page }) => {
+  const data = context();
+  data.historical.maps = [
+    { id: 'kaart-1976', label: 'Waterstaatskaart 1976', yearStart: 1975, yearEnd: 1976, edition: 4, manifestUrl: null, annotationUrl: 'https://example.test/1976', georeferencedMap: georeferencedMap('kaart-1976') }
+  ];
+  await mockIiifInfoAndWatchTileRequests(page);
+  await prepare(page, data);
+  await page.getByRole('button', { name: 'Open kaartlagen' }).click();
+
+  const toggle = page.getByLabel('Schuifvergelijking oud/nieuw');
+  await expect(toggle).toBeEnabled();
+  await toggle.check();
+
+  const divider = page.locator('.compare-divider');
+  await expect(divider).toBeVisible();
+  await expect(page.locator('.compare-map .maplibregl-canvas')).toBeVisible();
+
+  const box = await divider.boundingBox();
+  if (!box) throw new Error('Schuifregelaar heeft geen afmetingen');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 220, box.y + box.height / 2);
+  await page.mouse.up();
+  await expect.poll(async () => {
+    const style = await divider.getAttribute('style');
+    return Number(style?.match(/left:\s*([\d.]+)%/)?.[1]);
+  }).toBeGreaterThan(60);
+
+  await toggle.uncheck();
+  await expect(divider).not.toBeVisible();
+});
+
 test('zoekstralen wijzigen de URL en halen pas na loslaten nieuwe data op', async ({ page }) => {
   let requests = 0;
   await page.addInitScript(() => localStorage.setItem('watwashier:context-help:0.4', 'seen'));
