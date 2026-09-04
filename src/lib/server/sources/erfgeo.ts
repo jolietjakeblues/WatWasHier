@@ -7,7 +7,7 @@ const GEMEENTEGESCHIEDENIS_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph
 const KLOEKECODES_GRAPH = 'https://linkeddata.cultureelerfgoed.nl/graph/kloekecodes';
 type Binding = Record<string, { value?: string }>;
 
-export async function getPlaceName(lon: number, lat: number): Promise<string | null> {
+async function lookupNearestAddress(lon: number, lat: number): Promise<{ woonplaatsnaam?: string; gemeentenaam?: string } | null> {
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
   const reverse = new URL('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse');
   reverse.searchParams.set('lon', String(lon));
@@ -18,8 +18,23 @@ export async function getPlaceName(lon: number, lat: number): Promise<string | n
   if (!id) return null;
   const lookup = new URL('https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup');
   lookup.searchParams.set('id', id);
-  const lookupResult = await fetchSourceJson<{ response?: { docs?: Array<{ woonplaatsnaam?: string }> } }>(lookup, { source: 'PDOK Locatieserver lookup', headers: { accept: 'application/json' } });
-  return lookupResult.response?.docs?.[0]?.woonplaatsnaam ?? null;
+  const lookupResult = await fetchSourceJson<{ response?: { docs?: Array<{ woonplaatsnaam?: string; gemeentenaam?: string }> } }>(lookup, { source: 'PDOK Locatieserver lookup', headers: { accept: 'application/json' } });
+  return lookupResult.response?.docs?.[0] ?? null;
+}
+
+export async function getPlaceName(lon: number, lat: number): Promise<string | null> {
+  const doc = await lookupNearestAddress(lon, lat);
+  return doc?.woonplaatsnaam ?? null;
+}
+
+// De KKG-percelenquery moet altijd eerst tot één imxgeo:Gemeentegebied worden beperkt voordat er
+// een ruimtelijk filter overheen gaat — zonder die restrictie time-out de query op de volle ~8,4
+// miljoen percelen (zie getPercelen in kadaster-percelen.ts). Gemeentenaam kan afwijken van de
+// woonplaatsnaam (bv. een dorp dat een woonplaats is binnen een grotere gemeente), dus dit is
+// bewust een los veld en geen hergebruik van getPlaceName.
+export async function getGemeenteNaam(lon: number, lat: number): Promise<string | null> {
+  const doc = await lookupNearestAddress(lon, lat);
+  return doc?.gemeentenaam ?? null;
 }
 
 function sparqlString(value: string): string {

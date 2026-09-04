@@ -5,6 +5,7 @@ import { getRceHeritage } from './sources/rce';
 import { getArchaeology } from './sources/archaeology';
 import { getMunicipalityHistoryForLocation, getToponyms } from './sources/erfgeo';
 import { getMinuutplanSheets } from './sources/minuutplans';
+import { getPercelen } from './sources/kadaster-percelen';
 import { bboxAroundPoint } from '$lib/geo';
 import { SourceFetchError } from './source-fetch';
 
@@ -42,14 +43,15 @@ export async function buildLandscapeContext(
 ): Promise<LandscapeContext> {
   const warnings: string[] = [];
 
-  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult] = await Promise.allSettled([
+  const [buildingsResult, historyResult, heritageResult, archaeologyResult, municipalityHistoryResult, minuutplansResult, toponymsResult, percelenResult] = await Promise.allSettled([
     getBagBuildings(location.bbox),
     getWatertijdreisContext([location.lon, location.lat]),
     getRceHeritage(bboxAroundPoint(location.lon, location.lat, location.heritageRadiusMeters)),
     getArchaeology(location.bbox),
     getMunicipalityHistoryForLocation(location.lon, location.lat),
     getMinuutplanSheets(location.bbox),
-    getToponyms(location.bbox)
+    getToponyms(location.bbox),
+    getPercelen(location.lon, location.lat, location.bbox)
   ]);
 
   const buildings =
@@ -89,6 +91,8 @@ export async function buildLandscapeContext(
   if (minuutplansResult.status === 'rejected') warnings.push(sourceWarning('RCE kadastrale minuutplans', minuutplansResult.reason));
   const toponyms = toponymsResult.status === 'fulfilled' ? toponymsResult.value : [];
   if (toponymsResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo kloekecodes', toponymsResult.reason));
+  const percelen = percelenResult.status === 'fulfilled' ? percelenResult.value : [];
+  if (percelenResult.status === 'rejected') warnings.push(sourceWarning('Kadaster KKG percelen', percelenResult.reason));
 
   const provenance: Provenance[] = [
     {
@@ -158,6 +162,16 @@ export async function buildLandscapeContext(
     });
   }
 
+  if (percelen.length > 0) {
+    provenance.push({
+      id: 'source-kadaster-kkg-percelen',
+      source: 'kadaster-kkg-percelen',
+      title: 'Kadaster Knowledge Graph - Percelen',
+      url: 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/services/kkg/sparql',
+      retrievedAt: now()
+    });
+  }
+
   const buildingCount = buildings.features.length;
   const sourceStatus: SourceStatus[] = [
     statusFor('pdok-bag', 'PDOK BAG', buildingsResult),
@@ -166,7 +180,8 @@ export async function buildLandscapeContext(
     statusFor('rce-archaeology', 'RCE-archeologie', archaeologyResult),
     statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult),
     statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult),
-    statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult)
+    statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult),
+    statusFor('kadaster-kkg-percelen', 'Kadaster KKG percelen', percelenResult)
   ];
 
   return {
@@ -194,6 +209,10 @@ export async function buildLandscapeContext(
     toponyms: {
       status: toponymsResult.status === 'fulfilled' ? 'connected' : 'not-connected',
       items: toponyms
+    },
+    percelen: {
+      status: percelenResult.status === 'fulfilled' ? 'connected' : 'not-connected',
+      items: percelen
     },
     assertions: [
       {

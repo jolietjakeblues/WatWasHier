@@ -136,6 +136,7 @@
         <div class="overview-tile"><span>{context.municipalityHistory.periods.length}</span><small>Gemeente&shy;geschiedenis</small></div>
         <div class="overview-tile"><span>{context.minuutplans.status === 'connected' ? context.minuutplans.sheets.length : '–'}</span><small>Minuut&shy;plans</small></div>
         <div class="overview-tile"><span>{context.toponyms.status === 'connected' ? context.toponyms.items.length : '–'}</span><small>Plaats&shy;namen</small></div>
+        <div class="overview-tile"><span>{context.percelen.status === 'connected' ? context.percelen.items.length : '–'}</span><small>Percelen</small></div>
         <div class="overview-tile"><span>{context.historical.maps.length}</span><small>Historische kaarten</small></div>
       </div>
     </section>
@@ -303,6 +304,24 @@
           {/if}
         {:else}
           <p class="muted">De kloekecodes-bron kon niet worden bereikt.</p>
+        {/if}
+      </details>
+
+      <details class="data-details">
+        <summary><h2><span>Kadastrale percelen</span><small>{context.percelen.status === 'connected' ? `${context.percelen.items.length} percelen` : 'niet bereikbaar'}</small></h2></summary>
+        {#if context.percelen.status === 'connected'}
+          {#if context.percelen.items.length}
+            <p class="muted">Actuele perceelgrenzen uit de Kadaster Knowledge Graph staan als contouren op de kaart. Hieronder de eerste 15.</p>
+            <ul class="heritage-counts">
+              {#each context.percelen.items.slice(0, 15) as perceel}
+                <li>{perceel.gemeente} {perceel.sectie} {perceel.perceelnummer}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="muted">Voor deze locatie zijn geen kadastrale percelen gevonden.</p>
+          {/if}
+        {:else}
+          <p class="muted">De KKG-percelenbron kon niet worden bereikt.</p>
         {/if}
       </details>
 
