@@ -11,3 +11,6 @@ test-results/
 .vite-dev.log
 .vite-dev-error.log
 .wrangler
+
+# Editor/IDE config
+.claude/
