@@ -777,6 +777,12 @@
 
 <style>
   .map-shell { position: relative; min-height: 580px; height: 100%; overflow: hidden; border-radius: 16px; background: #dde3df; }
+  .map-shell button:focus-visible,
+  .map-shell input:focus-visible,
+  .map-shell [tabindex]:focus-visible {
+    outline: 3px solid #d7b969;
+    outline-offset: 2px;
+  }
   .map { position: absolute; inset: 0; }
   .compare-clip { position: absolute; z-index: 1; inset: 0; overflow: hidden; pointer-events: none; }
   .compare-map { position: absolute; inset: 0; }

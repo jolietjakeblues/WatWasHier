@@ -135,6 +135,23 @@
     name="description"
     content="Een prototype voor een bevraagbaar landschapsgeheugen van Nederland."
   />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="canonical" href="https://watwashier.pages.dev/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WatWasHier" />
+  <meta property="og:title" content="WatWasHier" />
+  <meta
+    property="og:description"
+    content="Een prototype voor een bevraagbaar landschapsgeheugen van Nederland."
+  />
+  <meta property="og:url" content="https://watwashier.pages.dev/" />
+  <meta property="og:locale" content="nl_NL" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="WatWasHier" />
+  <meta
+    name="twitter:description"
+    content="Een prototype voor een bevraagbaar landschapsgeheugen van Nederland."
+  />
 </svelte:head>
 
 <main>
