@@ -53,7 +53,7 @@ export async function buildLandscapeContext(
     getMunicipalityHistoryForLocation(location.lon, location.lat),
     getMinuutplanSheets(location.bbox),
     getToponyms(location.bbox),
-    getPercelen(location.lon, location.lat, location.bbox),
+    getPercelen(location.bbox),
     getDisappearedVillages(location.bbox),
     getDefenceLines(location.bbox),
     getHistoricGardens(location.bbox)
@@ -97,7 +97,7 @@ export async function buildLandscapeContext(
   const toponyms = toponymsResult.status === 'fulfilled' ? toponymsResult.value : [];
   if (toponymsResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo kloekecodes', toponymsResult.reason));
   const percelen = percelenResult.status === 'fulfilled' ? percelenResult.value : [];
-  if (percelenResult.status === 'rejected') warnings.push(sourceWarning('Kadaster KKG percelen', percelenResult.reason));
+  if (percelenResult.status === 'rejected') warnings.push(sourceWarning('Kadaster BRK percelen', percelenResult.reason));
   const disappearedVillages = disappearedVillagesResult.status === 'fulfilled' ? disappearedVillagesResult.value : [];
   if (disappearedVillagesResult.status === 'rejected') warnings.push(sourceWarning('ErfGeo verdwenen dorpen', disappearedVillagesResult.reason));
   const defenceLines = defenceLinesResult.status === 'fulfilled' ? defenceLinesResult.value : [];
@@ -175,10 +175,10 @@ export async function buildLandscapeContext(
 
   if (percelen.length > 0) {
     provenance.push({
-      id: 'source-kadaster-kkg-percelen',
-      source: 'kadaster-kkg-percelen',
-      title: 'Kadaster Knowledge Graph - Percelen',
-      url: 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/sparql',
+      id: 'source-kadaster-brk-percelen',
+      source: 'kadaster-brk-percelen',
+      title: 'Kadaster BRK Kadastrale Kaart (PDOK) - Percelen',
+      url: 'https://api.pdok.nl/kadaster/brk-kadastrale-kaart/ogc/v1/collections/perceel',
       retrievedAt: now()
     });
   }
@@ -223,7 +223,7 @@ export async function buildLandscapeContext(
     statusFor('erfgeo-gemeentegeschiedenis', 'ErfGeo gemeentegeschiedenis', municipalityHistoryResult),
     statusFor('rce-minuutplans', 'RCE kadastrale minuutplans', minuutplansResult),
     statusFor('erfgeo-kloekecodes', 'ErfGeo kloekecodes', toponymsResult),
-    statusFor('kadaster-kkg-percelen', 'Kadaster KKG percelen', percelenResult),
+    statusFor('kadaster-brk-percelen', 'Kadaster BRK percelen', percelenResult),
     statusFor('erfgeo-verdwenendorpen', 'ErfGeo verdwenen dorpen', disappearedVillagesResult),
     statusFor('rce-cho-linies', 'RCE CHO linies', defenceLinesResult),
     statusFor('rce-cho-groenaanleg', 'RCE CHO groenaanleg', historicGardensResult)

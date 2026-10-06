@@ -60,7 +60,7 @@ function formatArea(squareMeters: unknown): string | null {
 export function perceelPopup(properties: GeoJsonProperties): string {
   const p = properties ?? {};
   const area = formatArea(p.areaSquareMeters);
-  return `<div class="feature-card feature-card--perceel"><span class="feature-card__type">Kadastraal perceel</span><h3>${escapeHtml(p.gemeente ?? '?')} ${escapeHtml(p.sectie ?? '?')} ${escapeHtml(p.perceelnummer ?? '?')}</h3><dl>${row('Gemeente', p.gemeente)}${row('Sectie', p.sectie)}${row('Perceelnummer', p.perceelnummer)}${area ? row('Oppervlakte', area) : ''}</dl><p class="feature-card__description">Actueel kadastraal perceel, via de Kadaster Knowledge Graph.</p></div>`;
+  return `<div class="feature-card feature-card--perceel"><span class="feature-card__type">Kadastraal perceel</span><h3>${escapeHtml(p.gemeente ?? '?')} ${escapeHtml(p.sectie ?? '?')} ${escapeHtml(p.perceelnummer ?? '?')}</h3><dl>${row('Kadastrale gemeente', p.gemeente)}${row('Sectie', p.sectie)}${row('Perceelnummer', p.perceelnummer)}${area ? row('Oppervlakte', area) : ''}</dl><p class="feature-card__description">Actueel kadastraal perceel, via de BRK Kadastrale Kaart (PDOK).</p></div>`;
 }
 
 export function archaeologyPopup(properties: GeoJsonProperties, details?: ArchaeologyDetails | null, loading = false): string {
