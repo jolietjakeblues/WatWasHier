@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://watwashier.pages.dev/sitemap.xml

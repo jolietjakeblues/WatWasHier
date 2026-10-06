@@ -180,9 +180,10 @@
       {/if}
     </section>
 
+    <h2 class="visually-hidden">Details per bron</h2>
     <div class="detail-list">
       <details class="data-details">
-        <summary><h2><span>Actuele PDOK-data</span><small>{context.current.buildings.features.length} panden</small></h2></summary>
+        <summary><h3><span>Actuele PDOK-data</span><small>{context.current.buildings.features.length} panden</small></h3></summary>
         {#if context.current.buildings.features.length}
           <p class="muted">Hieronder staan de eerste 10 panden uit het geselecteerde gebied. De groene contouren staan op de kaart.</p>
           <div class="buildings">
@@ -224,7 +225,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Erfgoed</span><small>{context.heritage.status === 'connected' ? `${context.heritage.objects.features.length} objecten` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Erfgoed</span><small>{context.heritage.status === 'connected' ? `${context.heritage.objects.features.length} objecten` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.heritage.status === 'connected'}
           <ul class="heritage-counts">
             <li>Rijksmonumenten: {context.heritage.objects.features.filter((item) => item.properties?.heritageType === 'monument').length}</li>
@@ -246,7 +247,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Archeologie</span><small>{context.archaeology.status === 'connected' ? `${context.archaeology.objects.features.length} ankers` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Archeologie</span><small>{context.archaeology.status === 'connected' ? `${context.archaeology.objects.features.length} ankers` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.archaeology.status === 'connected'}
           <ul class="heritage-counts">
             <li>Terreinen: {context.archaeology.objects.features.filter((item) => item.properties?.archaeologyType === 'ArcheologischTerrein').length}</li>
@@ -261,7 +262,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Gemeentegeschiedenis</span><small>{context.municipalityHistory.periods.length} periodes</small></h2></summary>
+        <summary><h3><span>Gemeentegeschiedenis</span><small>{context.municipalityHistory.periods.length} periodes</small></h3></summary>
         {#if context.municipalityHistory.periods.length}
           <p class="muted">Historische gemeentegrenzen van {context.municipalityHistory.placeName} staan als gekleurde contouren op de kaart.</p>
           <ul class="heritage-counts">
@@ -275,7 +276,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Kadastrale minuutplans</span><small>{context.minuutplans.status === 'connected' ? `${context.minuutplans.sheets.length} bladen` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Kadastrale minuutplans</span><small>{context.minuutplans.status === 'connected' ? `${context.minuutplans.sheets.length} bladen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.minuutplans.status === 'connected'}
           {#if context.minuutplans.sheets.length}
             <p class="muted">Bladgrenzen uit de kadastrale minuutplans (1811–1832) staan als contouren op de kaart.</p>
@@ -293,7 +294,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Historische plaatsnamen</span><small>{context.toponyms.status === 'connected' ? `${context.toponyms.items.length} namen` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Historische plaatsnamen</span><small>{context.toponyms.status === 'connected' ? `${context.toponyms.items.length} namen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.toponyms.status === 'connected'}
           {#if context.toponyms.items.length}
             <p class="muted">Kloekecodes: historische namen van plaatsen en buurtschappen, sommige inmiddels verdwenen of vergeten. Als paarse punten op de kaart.</p>
@@ -311,7 +312,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Kadastrale percelen</span><small>{context.percelen.status === 'connected' ? `${context.percelen.items.length} percelen` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Kadastrale percelen</span><small>{context.percelen.status === 'connected' ? `${context.percelen.items.length} percelen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.percelen.status === 'connected'}
           {#if context.percelen.items.length}
             <p class="muted">Actuele perceelgrenzen uit de Kadaster Knowledge Graph staan als contouren op de kaart. Hieronder de eerste 15.</p>
@@ -329,7 +330,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Verdwenen dorpen</span><small>{context.disappearedVillages.status === 'connected' ? `${context.disappearedVillages.items.length} dorpen` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Verdwenen dorpen</span><small>{context.disappearedVillages.status === 'connected' ? `${context.disappearedVillages.items.length} dorpen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.disappearedVillages.status === 'connected'}
           {#if context.disappearedVillages.items.length}
             <p class="muted">Verdwenen dorpen en gehuchten, naar Bert Stulp's boekenreeks "Verdwenen Dorpen", staan als grijze punten op de kaart.</p>
@@ -347,7 +348,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Historische linies</span><small>{context.defenceLines.status === 'connected' ? `${context.defenceLines.items.length} linies` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Historische linies</span><small>{context.defenceLines.status === 'connected' ? `${context.defenceLines.items.length} linies` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.defenceLines.status === 'connected'}
           {#if context.defenceLines.items.length}
             <p class="muted">Historische verdedigingslinies staan als groene stippellijnen op de kaart.</p>
@@ -365,7 +366,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Historische groenaanleg</span><small>{context.historicGardens.status === 'connected' ? `${context.historicGardens.items.length} aanleggen` : 'niet bereikbaar'}</small></h2></summary>
+        <summary><h3><span>Historische groenaanleg</span><small>{context.historicGardens.status === 'connected' ? `${context.historicGardens.items.length} aanleggen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.historicGardens.status === 'connected'}
           {#if context.historicGardens.items.length}
             <p class="muted">Historische tuin- en landschapsarchitectuur staat als groene vlakken op de kaart.</p>
@@ -383,7 +384,7 @@
       </details>
 
       <details class="data-details">
-        <summary><h2><span>Bronnen</span><small>{unavailableSourceCount > 0 ? `${unavailableSourceCount} niet bereikbaar` : 'alle beschikbaar'}</small></h2></summary>
+        <summary><h3><span>Bronnen</span><small>{unavailableSourceCount > 0 ? `${unavailableSourceCount} niet bereikbaar` : 'alle beschikbaar'}</small></h3></summary>
         <ul class="source-status" aria-label="Status van databronnen">
           {#each context.sourceStatus as source}
             <li class:unavailable={source.status === 'unavailable'}>
@@ -409,6 +410,12 @@
     background: #fffdf8;
     border: 1px solid #d7d9d2;
     border-radius: 16px;
+  }
+  .panel button:focus-visible,
+  .panel input:focus-visible,
+  .panel summary:focus-visible {
+    outline: 3px solid #d7b969;
+    outline-offset: 2px;
   }
   .eyebrow {
     margin: 0;
@@ -436,6 +443,17 @@
     letter-spacing: -0.045em;
   }
   h2 { margin: 0 0 12px; font-size: 1rem; }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .intro { margin: 16px 0 0; color: #53615c; line-height: 1.55; }
   .test-notice {
     display: grid;
@@ -510,7 +528,7 @@
   .data-details summary::-webkit-details-marker { display: none; }
   .data-details summary::after { content: '›'; flex: none; transform: rotate(90deg); color: #8da099; font-size: 1.1rem; }
   .data-details[open] summary::after { transform: rotate(-90deg); }
-  .data-details summary h2 {
+  .data-details summary h3 {
     display: flex;
     align-items: center;
     justify-content: space-between;

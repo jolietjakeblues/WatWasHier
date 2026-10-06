@@ -3,7 +3,7 @@ import { fetchSourceJson } from '$lib/server/source-fetch';
 import { parseWkt } from '$lib/server/wkt';
 import { getGemeenteNaam } from './erfgeo';
 
-const ENDPOINT = 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/services/kkg/sparql';
+const ENDPOINT = 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/sparql';
 
 interface Binding {
   per?: { value?: string };

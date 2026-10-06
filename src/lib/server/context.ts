@@ -178,7 +178,7 @@ export async function buildLandscapeContext(
       id: 'source-kadaster-kkg-percelen',
       source: 'kadaster-kkg-percelen',
       title: 'Kadaster Knowledge Graph - Percelen',
-      url: 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/services/kkg/sparql',
+      url: 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/sparql',
       retrievedAt: now()
     });
   }
