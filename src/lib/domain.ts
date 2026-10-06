@@ -64,7 +64,7 @@ export interface LocationSelection {
 
 export interface Provenance {
   id: string;
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'kadaster' | 'nl-mcp' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-brk-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
   title: string;
   url?: string;
   retrievedAt: string;
@@ -72,7 +72,7 @@ export interface Provenance {
 }
 
 export interface SourceStatus {
-  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-kkg-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
+  source: 'pdok-bag' | 'watertijdreis' | 'rce' | 'rce-archaeology' | 'erfgeo-gemeentegeschiedenis' | 'rce-minuutplans' | 'erfgeo-kloekecodes' | 'kadaster-brk-percelen' | 'erfgeo-verdwenendorpen' | 'rce-cho-linies' | 'rce-cho-groenaanleg';
   label: string;
   status: 'available' | 'unavailable';
   checkedAt: string;

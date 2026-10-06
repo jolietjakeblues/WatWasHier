@@ -242,7 +242,7 @@ test('kadastrale percelen tonen een klikbare perceelgrens', async ({ page }) => 
     status: 'connected',
     items: [
       {
-        id: 'https://data.kkg.kadaster.nl/id/perceel/1/1', gemeente: 'Zwolle', sectie: 'M', perceelnummer: '4370', areaSquareMeters: 293,
+        id: '69820437070000', gemeente: 'Zwolle', sectie: 'M', perceelnummer: '4370', areaSquareMeters: 293,
         // Rand op exact de lengtegraad van het kaartcentrum, zelfde truc als de gemeentegeschiedenis-test.
         geometry: {
           type: 'Polygon',

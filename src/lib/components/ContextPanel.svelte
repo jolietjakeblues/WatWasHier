@@ -315,7 +315,7 @@
         <summary><h3><span>Kadastrale percelen</span><small>{context.percelen.status === 'connected' ? `${context.percelen.items.length} percelen` : 'niet bereikbaar'}</small></h3></summary>
         {#if context.percelen.status === 'connected'}
           {#if context.percelen.items.length}
-            <p class="muted">Actuele perceelgrenzen uit de Kadaster Knowledge Graph staan als contouren op de kaart. Hieronder de eerste 15.</p>
+            <p class="muted">Actuele perceelgrenzen uit de BRK Kadastrale Kaart staan als contouren op de kaart. Hieronder de eerste 15.</p>
             <ul class="heritage-counts">
               {#each context.percelen.items.slice(0, 15) as perceel}
                 <li>{perceel.gemeente} {perceel.sectie} {perceel.perceelnummer}</li>
@@ -325,7 +325,7 @@
             <p class="muted">Voor deze locatie zijn geen kadastrale percelen gevonden.</p>
           {/if}
         {:else}
-          <p class="muted">De KKG-percelenbron kon niet worden bereikt.</p>
+          <p class="muted">De bron voor kadastrale percelen kon niet worden bereikt.</p>
         {/if}
       </details>
 

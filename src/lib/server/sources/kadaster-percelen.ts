@@ -1,79 +1,55 @@
+import type { Geometry } from 'geojson';
 import type { Perceel } from '$lib/domain';
 import { fetchSourceJson } from '$lib/server/source-fetch';
-import { parseWkt } from '$lib/server/wkt';
-import { getGemeenteNaam } from './erfgeo';
 
-const ENDPOINT = 'https://api.labs.kadaster.nl/datasets/kadaster/kkg/sparql';
+const ENDPOINT = 'https://api.pdok.nl/kadaster/brk-kadastrale-kaart/ogc/v1/collections/perceel/items';
+const MAX_PERCELEN = 300;
 
-interface Binding {
-  per?: { value?: string };
-  sectie?: { value?: string };
-  nummer?: { value?: string };
-  area?: { value?: string };
-  wkt?: { value?: string };
+interface PercelenFeature {
+  geometry?: Geometry | null;
+  properties?: {
+    identificatie_lokaal_id?: string;
+    kadastrale_gemeente_waarde?: string;
+    sectie?: string;
+    perceelnummer?: number | string;
+    kadastrale_grootte_waarde?: number | string;
+  };
 }
 
-export function parsePercelenBindings(bindings: Binding[], gemeente: string): Perceel[] {
+export function parsePercelenFeatures(features: PercelenFeature[]): Perceel[] {
   const items = new Map<string, Perceel>();
-  for (const row of bindings) {
-    const uri = row.per?.value;
-    const sectie = row.sectie?.value;
-    const perceelnummer = row.nummer?.value;
-    const wkt = row.wkt?.value;
-    if (!uri || !sectie || !perceelnummer || !wkt) continue;
-    const geometry = parseWkt(wkt);
-    if (!geometry) continue;
-    const area = row.area?.value ? Number.parseFloat(row.area.value) : NaN;
-    items.set(uri, {
-      id: uri,
+  for (const feature of features) {
+    const properties = feature.properties ?? {};
+    const id = properties.identificatie_lokaal_id;
+    const gemeente = properties.kadastrale_gemeente_waarde;
+    const sectie = properties.sectie;
+    const perceelnummer = properties.perceelnummer;
+    if (!id || !gemeente || !sectie || perceelnummer === undefined || perceelnummer === null || !feature.geometry) continue;
+    const area = Number(properties.kadastrale_grootte_waarde);
+    items.set(id, {
+      id,
       gemeente,
       sectie,
-      perceelnummer,
+      perceelnummer: String(perceelnummer),
       areaSquareMeters: Number.isFinite(area) ? area : null,
-      geometry
+      geometry: feature.geometry
     });
   }
   return [...items.values()];
 }
 
-function sparqlString(value: string): string {
-  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', ' ');
-}
-
-// Een ruimtelijk filter (geof:sfIntersects) over alle ~8,4 miljoen imxgeo:Perceel-instanties zonder
-// eerst niet-ruimtelijk te filteren geeft een timeout op dit endpoint. Daarom wordt eerst via PDOK
-// de gemeentenaam voor het punt bepaald en als verplichte voorfilter gebruikt — pas daarna gaat het
-// bbox-filter erover heen. Zonder gemeentenaam (adresloze locatie) kan er niet veilig gezocht
-// worden, dus dan blijft de laag leeg in plaats van een dure ongefilterde scan te proberen.
-export async function getPercelen(
-  lon: number,
-  lat: number,
-  bbox: [number, number, number, number]
-): Promise<Perceel[]> {
-  const gemeente = await getGemeenteNaam(lon, lat);
-  if (!gemeente) return [];
-  const [minLon, minLat, maxLon, maxLat] = bbox;
-  const polygon = `${minLon} ${minLat},${maxLon} ${minLat},${maxLon} ${maxLat},${minLon} ${maxLat},${minLon} ${minLat}`;
-  const query = `PREFIX imxgeo: <http://modellen.geostandaarden.nl/def/imx-geo#>
-PREFIX ext: <https://modellen.kkg.kadaster.nl/def/imxgeo-ext#>
-PREFIX geosparql: <http://www.opengis.net/ont/geosparql#>
-PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
-SELECT ?per ?sectie ?nummer ?area ?wkt WHERE {
-  ?gem a imxgeo:Gemeentegebied ; imxgeo:naam ?gnaam .
-  FILTER(CONTAINS(LCASE(?gnaam), LCASE("${sparqlString(gemeente)}")))
-  ?per a imxgeo:Perceel ;
-    imxgeo:ligtInRegistratieveRuimte ?gem ;
-    ext:sectie ?sectie ;
-    ext:perceelnummer ?nummer ;
-    geosparql:hasMetricArea ?area ;
-    geosparql:hasGeometry/geosparql:asWKT ?wkt .
-  FILTER(geof:sfIntersects(?wkt, "POLYGON((${polygon}))"^^geosparql:wktLiteral))
-} LIMIT 300`;
-  const result = await fetchSourceJson<{ results?: { bindings?: Binding[] } }>(ENDPOINT, {
-    source: 'Kadaster KKG percelen',
-    method: 'POST',
-    headers: { 'content-type': 'application/sparql-query', accept: 'application/sparql-results+json' },
-    body: query
+// De Kadaster Knowledge Graph (KKG) is hiervoor niet meer bruikbaar: het huidige KKG-endpoint kent
+// geof:sfIntersects niet en heeft geen ruimtelijke index, waardoor een bbox-query tientallen
+// seconden duurt en elke kaartklik zou blokkeren. De BRK Kadastrale Kaart van PDOK levert
+// dezelfde Kadaster-percelen (zelfde BRK-bron, WGS84) met een echte bbox-index in ~0,2 s.
+export async function getPercelen(bbox: [number, number, number, number]): Promise<Perceel[]> {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set('f', 'json');
+  url.searchParams.set('bbox', bbox.join(','));
+  url.searchParams.set('limit', String(MAX_PERCELEN));
+  const result = await fetchSourceJson<{ features?: PercelenFeature[] }>(url, {
+    source: 'Kadaster BRK percelen',
+    headers: { accept: 'application/geo+json, application/json' }
   });
-  return parsePercelenBindings(result.results?.bindings ?? [], gemeente);
+  return parsePercelenFeatures(result.features ?? []);
 }
